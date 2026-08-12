@@ -291,19 +291,36 @@
       return `${hrs}:${mins.toString().padStart(2, '0')}`;
     }
 
-    // 步驟 3-2：實時監聽 Firestore 資料變化
-    function initFirestoreListener() {
-      db.collection("flights").orderBy("flight_date", "desc")
-        .onSnapshot((snapshot) => {
-          flights = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          renderFlights();
-        }, (error) => {
-          console.error("Firestore 監聽失敗:", error);
-        });
-    }
+    // 步驟 3-2：實時監聽 Firestore 資料變化並依日期由新到舊排序
+function initFirestoreListener() {
+  db.collection("flights")
+    .onSnapshot((snapshot) => {
+      flights = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // 前端自動按日期降序排序（由最新到最舊）
+      // 若日期相同，則依據 Firestore 的新增時間戳 (createdAt) 倒序排列
+      flights.sort((a, b) => {
+        const dateA = new Date(a.flight_date || 0);
+        const dateB = new Date(b.flight_date || 0);
+
+        if (dateB - dateA !== 0) {
+          return dateB - dateA; // 日期不同，新的在前
+        }
+
+        // 同一天：比對建立了多少時間 (createdAt)
+        const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+        const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+        return timeB - timeA;
+      });
+
+      renderFlights();
+    }, (error) => {
+      console.error("Firestore 監聽失敗:", error);
+    });
+}
 
     function toggleForm() {
       const modal = document.getElementById('modal-overlay');
