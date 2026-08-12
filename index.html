@@ -44,15 +44,24 @@
       <span class="text-2xl font-bold tracking-wide text-slate-900">FlightLog System</span>
     </a>
 
-    <!-- 右側：併入 Banner 的時數統計 -->
-    <div class="flex items-center gap-3 text-sm font-semibold">
-      <div class="bg-slate-50 px-3.5 py-1.5 rounded-lg border border-slate-200 shadow-sm">
-        <span class="text-slate-500 mr-2">A359:</span>
-        <span id="hours-a359" style="color: #46A3FF;" class="text-base font-bold">0:00</span>
+    <!-- 右側：機長資訊與時數統計區塊 -->
+    <div class="flex items-center gap-6">
+      <!-- Pilot 與 Type Rating 資訊 -->
+      <div class="text-right border-r border-slate-200 pr-6 hidden sm:block">
+        <p class="text-sm font-bold text-slate-800 tracking-wide">Pilot Capt. Yukiina</p>
+        <p class="text-xs font-medium text-slate-500 tracking-normal">Type Rating A350 XWB Series</p>
       </div>
-      <div class="bg-slate-50 px-3.5 py-1.5 rounded-lg border border-slate-200 shadow-sm">
-        <span class="text-slate-500 mr-2">A35K:</span>
-        <span id="hours-a35k" style="color: #46A3FF;" class="text-base font-bold">0:00</span>
+
+      <!-- 時數統計 -->
+      <div class="flex items-center gap-3 text-sm font-semibold">
+        <div class="bg-slate-50 px-3.5 py-1.5 rounded-lg border border-slate-200 shadow-sm">
+          <span class="text-slate-500 mr-2">A359:</span>
+          <span id="hours-a359" style="color: #46A3FF;" class="text-base font-bold">0:00</span>
+        </div>
+        <div class="bg-slate-50 px-3.5 py-1.5 rounded-lg border border-slate-200 shadow-sm">
+          <span class="text-slate-500 mr-2">A35K:</span>
+          <span id="hours-a35k" style="color: #46A3FF;" class="text-base font-bold">0:00</span>
+        </div>
       </div>
     </div>
   </div>
