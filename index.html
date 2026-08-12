@@ -13,8 +13,8 @@
     .hero-overlay { background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.7)); }
     ::-webkit-scrollbar { height: 8px; width: 8px; }
     ::-webkit-scrollbar-track { background: #f1f5f9; }
-    ::-webkit-scrollbar-thumb { background: #46A3FF; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #2b82d9; }
+    ::-webkit-scrollbar-thumb { background: #23569d; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #1a427a; }
   </style>
 
   <!-- Firebase Web SDK v10 (Compat Mode) -->
@@ -56,11 +56,11 @@
       <div class="flex items-center gap-3 text-sm font-semibold">
         <div class="bg-slate-50 px-3.5 py-1.5 rounded-lg border border-slate-200 shadow-sm">
           <span class="text-slate-500 mr-2">A359:</span>
-          <span id="hours-a359" style="color: #46A3FF;" class="text-base font-bold">0:00</span>
+          <span id="hours-a359" style="color: #23569d;" class="text-base font-bold">0:00</span>
         </div>
         <div class="bg-slate-50 px-3.5 py-1.5 rounded-lg border border-slate-200 shadow-sm">
           <span class="text-slate-500 mr-2">A35K:</span>
-          <span id="hours-a35k" style="color: #46A3FF;" class="text-base font-bold">0:00</span>
+          <span id="hours-a35k" style="color: #23569d;" class="text-base font-bold">0:00</span>
         </div>
       </div>
     </div>
@@ -76,7 +76,7 @@
       <div class="overflow-x-auto w-full">
         <table class="w-full text-center border-collapse text-xs">
           <thead>
-            <tr style="background-color: #46A3FF;" class="text-white border-b border-blue-400 whitespace-nowrap">
+            <tr style="background-color: #23569d;" class="text-white border-b border-blue-900 whitespace-nowrap">
               <th class="p-3 font-semibold text-center align-middle">日期</th>
               <th class="p-3 font-semibold text-center align-middle">機型</th>
               <th class="p-3 font-semibold text-center align-middle">出發地</th>
@@ -112,7 +112,7 @@
   </main>
 
   <!-- 右下角懸浮按鈕 (FAB) -->
-  <button id="fab-add-btn" class="fixed bottom-6 right-6 text-white rounded-full p-4 shadow-xl flex items-center gap-2 transition-all duration-300 hover:scale-105 z-40 border border-blue-300" onclick="toggleForm()" style="background-color: #46A3FF;">
+  <button id="fab-add-btn" class="fixed bottom-6 right-6 text-white rounded-full p-4 shadow-xl flex items-center gap-2 transition-all duration-300 hover:scale-105 z-40 border border-blue-300" onclick="toggleForm()" style="background-color: #23569d;">
     <i data-lucide="plus" class="w-6 h-6"></i>
     <span class="font-medium pr-1 text-sm hidden sm:inline">新增紀錄</span>
   </button>
@@ -122,7 +122,7 @@
     <div class="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl relative my-8">
       <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
         <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-          <i data-lucide="file-plus" class="w-5 h-5" style="color: #46A3FF;"></i> 新增飛行紀錄
+          <i data-lucide="file-plus" class="w-5 h-5" style="color: #23569d;"></i> 新增飛行紀錄
         </h3>
         <button class="text-slate-400 hover:text-slate-600" onclick="toggleForm()">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -224,7 +224,7 @@
         </div>
         <div class="pt-3 flex gap-3">
           <button type="button" onclick="toggleForm()" class="w-1/3 py-2 rounded-lg font-medium bg-slate-100 hover:bg-slate-200 text-slate-600">取消</button>
-          <button type="submit" class="w-2/3 py-2 rounded-lg font-medium transition-colors hover:opacity-90 text-white" style="background-color: #46A3FF;">儲存紀錄</button>
+          <button type="submit" class="w-2/3 py-2 rounded-lg font-medium transition-colors hover:opacity-90 text-white" style="background-color: #23569d;">儲存紀錄</button>
         </div>
       </form>
     </div>
@@ -396,7 +396,7 @@ function initFirestoreListener() {
             <i data-lucide="arrow-right" class="w-3.5 h-3.5 inline-block align-middle"></i>
           </td>
           <td class="p-3 font-semibold text-slate-800 text-center align-middle">${destStr}</td>
-          <td class="p-3 font-bold text-center align-middle" style="color: #46A3FF;">${formatHoursToHM(f.flight_hours)}</td>
+          <td class="p-3 font-bold text-center align-middle" style="color: #23569d;">${formatHoursToHM(f.flight_hours)}</td>
           <td class="p-3 text-center align-middle">${f.flight_level ? 'FL' + f.flight_level : '—'}</td>
           <td class="p-3 text-center align-middle">${f.passengers || 0}</td>
           <td class="p-3 text-center align-middle">${f.cargo || 0}</td>
