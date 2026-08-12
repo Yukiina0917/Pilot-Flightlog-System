@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlightLog System</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <style>
+    body { font-family: 'DM Sans', sans-serif; background-color: #ffffff; min-height: 100vh; }
+    .hero-overlay { background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.7)); }
+    ::-webkit-scrollbar { height: 8px; width: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #46A3FF; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #2b82d9; }
+  </style>
+
+  <!-- Firebase Web SDK v10 (Compat Mode) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDn_AXc3QH3JPLyy5ExxODRO84Q_8lrbNo",
+      authDomain: "pilot-flightlog-system.firebaseapp.com",
+      projectId: "pilot-flightlog-system",
+      storageBucket: "pilot-flightlog-system.firebasestorage.app",
+      messagingSenderId: "760562947024",
+      appId: "G-45CG1GNVL9"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+  </script>
+</head>
+
+<body class="min-h-screen text-slate-800 w-full flex flex-col bg-white">
+  <header class="relative h-40 overflow-hidden shrink-0">
+    <img class="absolute inset-0 w-full h-full object-cover" loading="lazy" src="https://yukiina0917.sirv.com/Images/maxresdefault.jpg" alt="FlightLog Banner">
+    <div class="hero-overlay absolute inset-0 flex items-center justify-center">
+      <h1 class="text-3xl font-bold tracking-wide text-white">FlightLog System</h1>
+    </div>
+  </header>
+
+  <main class="max-w-[96vw] mx-auto px-4 py-6 w-full flex-grow flex flex-col">
+    <!-- 頁首統計列 -->
+    <div class="flex items-center justify-between mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm">
+      <div>
+        <p class="text-sm font-semibold text-slate-700">總飛行時數統計</p>
+        <p class="text-xs text-slate-500">依機型分別計算</p>
+      </div>
+      <div class="flex items-center gap-4 text-sm font-semibold">
+        <div class="bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm">
+          <span class="text-slate-500 mr-2">A359:</span>
+          <span id="hours-a359" style="color: #46A3FF;" class="text-base font-bold">0:00</span>
+        </div>
+        <div class="bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm">
+          <span class="text-slate-500 mr-2">A35K:</span>
+          <span id="hours-a35k" style="color: #46A3FF;" class="text-base font-bold">0:00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 表格容器 -->
+    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-md flex-grow flex flex-col">
+      <div class="overflow-x-auto w-full">
+        <table class="w-full text-center border-collapse text-xs">
+          <thead>
+            <tr style="background-color: #46A3FF;" class="text-white border-b border-blue-400 whitespace-nowrap">
+              <th class="p-3 font-semibold text-center align-middle">日期</th>
+              <th class="p-3 font-semibold text-center align-middle">機型</th>
+              <th class="p-3 font-semibold text-center align-middle">出發地</th>
+              <th class="p-3 font-semibold text-center align-middle w-6"></th>
+              <th class="p-3 font-semibold text-center align-middle">目的地</th>
+              <th class="p-3 font-semibold text-center align-middle">飛行時間</th>
+              <th class="p-3 font-semibold text-center align-middle">高度 (FL)</th>
+              <th class="p-3 font-semibold text-center align-middle">PAX</th>
+              <th class="p-3 font-semibold text-center align-middle">Cargo</th>
+              <th class="p-3 font-semibold text-center align-middle">起飛重量</th>
+              <th class="p-3 font-semibold text-center align-middle">TFG</th>
+              <th class="p-3 font-semibold text-center align-middle">TTG</th>
+              <th class="p-3 font-semibold text-center align-middle">ENR</th>
+              <th class="p-3 font-semibold text-center align-middle">Remaining</th>
+              <th class="p-3 font-semibold text-center align-middle">TFU</th>
+              <th class="p-3 font-semibold text-center align-middle">降落速度</th>
+              <th class="p-3 font-semibold text-center align-middle">Landing V/S</th>
+              <th class="p-3 font-semibold text-center align-middle">操作</th>
+            </tr>
+          </thead>
+          <tbody id="flight-table-body" class="divide-y divide-slate-200 text-slate-700">
+            <!-- 動態渲染表格內容 -->
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- 空資料提示 -->
+      <div id="empty-state" class="py-16 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
+        <i data-lucide="plane-takeoff" class="w-10 h-10 opacity-50"></i>
+        <p class="text-sm">尚無飛行紀錄，點擊右下角按鈕新增紀錄</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- 右下角懸浮按鈕 (FAB) -->
+  <button id="fab-add-btn" class="fixed bottom-6 right-6 text-white rounded-full p-4 shadow-xl flex items-center gap-2 transition-all duration-300 hover:scale-105 z-40 border border-blue-300" onclick="toggleForm()" style="background-color: #46A3FF;">
+    <i data-lucide="plus" class="w-6 h-6"></i>
+    <span class="font-medium pr-1 text-sm hidden sm:inline">新增紀錄</span>
+  </button>
+
+  <!-- 表單 Modal (對話盒) -->
+  <div id="modal-overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+    <div class="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl relative my-8">
+      <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <i data-lucide="file-plus" class="w-5 h-5" style="color: #46A3FF;"></i> 新增飛行紀錄
+        </h3>
+        <button class="text-slate-400 hover:text-slate-600" onclick="toggleForm()">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="flight-form" class="space-y-3" onsubmit="handleSubmit(event)">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-date">日期</label>
+            <input id="f-date" type="date" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none focus:border-blue-400" required>
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-aircraft">機型</label>
+            <select id="f-aircraft" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none focus:border-blue-400">
+              <option value="A359">A359</option>
+              <option value="A35K">A35K</option>
+              <option value="B77W">B77W</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-4 gap-3">
+          <div>
+            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-dep-iata">出發 IATA</label>
+            <input id="f-dep-iata" type="text" placeholder="例: TPE" maxlength="3" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 uppercase focus:outline-none focus:border-blue-400" oninput="autoFillICAO('dep')">
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-dep-icao">出發 ICAO</label>
+            <input id="f-dep-icao" type="text" placeholder="例: RCTP" maxlength="4" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 uppercase focus:outline-none focus:border-blue-400">
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-dest-iata">目的 IATA</label>
+            <input id="f-dest-iata" type="text" placeholder="例: HND" maxlength="3" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 uppercase focus:outline-none focus:border-blue-400" oninput="autoFillICAO('dest')">
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-dest-icao">目的 ICAO</label>
+            <input id="f-dest-icao" type="text" placeholder="例: RJTT" maxlength="4" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 uppercase focus:outline-none focus:border-blue-400">
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-pax">乘客數量 (PAX)</label>
+            <input id="f-pax" type="number" min="0" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none focus:border-blue-400">
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-cargo">Cargo</label>
+            <input id="f-cargo" type="number" min="0" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none focus:border-blue-400">
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-tow">起飛重量 (TOW)</label>
+            <input id="f-tow" type="number" min="0" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none focus:border-blue-400">
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-tfg">TFG</label>
+            <input id="f-tfg" type="text" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none focus:border-blue-400">
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-ttg">TTG</label>
+            <input id="f-ttg" type="text" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none focus:border-blue-400">
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-enr">ENR</label>
+            <input id="f-enr" type="text" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none focus:border-blue-400">
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-remaining">REMAINING</label>
+            <input id="f-remaining" type="text" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none focus:border-blue-400">
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-tfu">TFU</label>
+            <input id="f-tfu" type="text" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none focus:border-blue-400">
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-fl">飛行高度 (FL)</label>
+            <input id="f-fl" type="text" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none focus:border-blue-400">
+          </div>
+        </div>
+        <div class="grid grid-cols-4 gap-3">
+          <div>
+            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-lspd">降落速度</label>
+            <input id="f-lspd" type="number" min="0" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none focus:border-blue-400">
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-lvs">Landing V/S</label>
+            <input id="f-lvs" type="number" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none focus:border-blue-400">
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-hours">小時</label>
+            <input id="f-hours" type="number" min="0" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none focus:border-blue-400">
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-minutes">分鐘</label>
+            <input id="f-minutes" type="number" min="0" max="59" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none focus:border-blue-400">
+          </div>
+        </div>
+        <div class="pt-3 flex gap-3">
+          <button type="button" onclick="toggleForm()" class="w-1/3 py-2 rounded-lg font-medium bg-slate-100 hover:bg-slate-200 text-slate-600">取消</button>
+          <button type="submit" class="w-2/3 py-2 rounded-lg font-medium transition-colors hover:opacity-90 text-white" style="background-color: #46A3FF;">儲存紀錄</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let flights = [];
+
+    const AIRPORT_MAP = {
+      "TPE": "RCTP", "TSA": "RCSS", "KHH": "RCKH", "RMQ": "RCMQ", "TNN": "RCNN",
+      "HUN": "RCYU", "TTT": "RCFN", "MZG": "RCQC", "KMN": "RCBS", "LZN": "RCFG",
+      "HND": "RJTT", "NRT": "RJAA", "KIX": "RJBB", "ITM": "RJOO", "FUK": "RJFF",
+      "CTS": "RJCC", "OKA": "ROAH", "NGO": "RJGG", "SDJ": "RJSS", "KOJ": "RJFK",
+      "KMJ": "RJFT", "TAK": "RJOT", "MYJ": "RJOM", "FSZ": "RJNS", "OKJ": "RJOB",
+      "ICN": "RKSI", "GMP": "RKSS", "PUS": "RKPK", "CJU": "RKPC", "TAE": "RKTN",
+      "HKG": "VHHH", "MFM": "VMMC", "PVG": "ZSPD", "SHA": "ZSSS", "PEK": "ZBAA",
+      "PKX": "ZBAD", "CAN": "ZGGG", "SZX": "ZGOW", "CTU": "ZUUU", "TFU": "ZUTF",
+      "CKG": "ZUCK", "KMG": "ZPPP", "XIY": "ZLXY", "HGH": "ZSHC", "NKG": "ZSNJ",
+      "XMN": "ZSAM", "TAO": "ZSQD", "DLC": "ZYTL", "SHE": "ZYTX", "CSX": "ZGHA",
+      "SIN": "WSSS", "BKK": "VTBS", "DMK": "VTBD", "HKT": "VTSP", "CNX": "VTCC",
+      "KUL": "WMKK", "PEN": "WMKP", "BKI": "WBKK", "CGK": "WIII", "DPS": "WADD",
+      "SUB": "WWAR", "SGN": "VVTS", "HAN": "VVNB", "DAD": "VVDN", "PNH": "VDPP",
+      "REP": "VDSR", "RGN": "VYYYY", "MNL": "RPLL", "CEB": "RPVM", "MPH": "RPVE",
+      "DEL": "VIDP", "BOM": "VABB", "MAA": "VOMM", "BLR": "VOBL", "CMB": "VCBI",
+      "DXB": "OMDB", "DWC": "OMDW", "AUH": "OMAA", "DOH": "OTHH", "MCT": "OOMS",
+      "RUH": "OERK", "JED": "OEJN", "TLV": "LLBG", "AMM": "OJAI", "IST": "LTFM", "SAW": "LTFJ",
+      "LAX": "KLAX", "JFK": "KJFK", "EWR": "KEWR", "LGA": "KLGA", "SFO": "KSFO",
+      "SEA": "KSEA", "ORD": "KORD", "MDW": "KMDW", "DFW": "KDFW", "DAL": "KDAL",
+      "ATL": "KATL", "MIA": "KMIA", "FLL": "KFLL", "MCO": "KMCO", "BOS": "KBOS",
+      "IAD": "KIAD", "DCA": "KDCA", "DEN": "KDEN", "PHX": "KPHX", "LAS": "KLAS",
+      "PDX": "KPDX", "SAN": "KSAN", "SJC": "KSJC", "OAK": "KOAK", "SLC": "KSLC",
+      "MSP": "KMSP", "DTW": "KDTW", "PHL": "KPHL", "CLT": "KCLT", "IAH": "KIAH",
+      "HOU": "KHOU", "ANC": "PANC", "HNL": "PHNL",
+      "YVR": "CYVR", "YYZ": "CYYZ", "YUL": "CYUL", "YYC": "CYYC", "YEG": "CYEG", "YOW": "CYOW",
+      "MEX": "MMMX", "CUN": "MMUN",
+      "LHR": "EGLL", "LGW": "EGKK", "STN": "EGSS", "MAN": "EGCC", "EDI": "EGPH",
+      "CDG": "LFPG", "ORY": "LFPO", "NCE": "LFMN",
+      "FRA": "EDDF", "MUC": "EDDM", "BER": "EDDB", "HAM": "EDDH", "DUS": "EDDL",
+      "AMS": "EHAM", "BRU": "EBBR", "ZRH": "LSZH", "GVA": "LSGG", "VIE": "LOWW",
+      "FCO": "LIRF", "MXP": "LIMC", "VCE": "LIPZ",
+      "MAD": "LEMD", "BCN": "LEBL", "AGP": "LEMG", "LIS": "LPPT",
+      "CPH": "EKCH", "ARN": "ESSA", "OSL": "ENGM", "HEL": "EFHK", "KEF": "BIKF",
+      "ATH": "LGAV", "WAW": "EPWA", "PRG": "LKPR", "BUD": "LHBP",
+      "SVO": "UUEE", "DME": "UUDD",
+      "SYD": "YSSY", "MEL": "YMML", "BNE": "YBBN", "PER": "YPPH", "ADL": "YPAD",
+      "CNS": "YBCS", "DRW": "YPDN", "OOL": "YBCG",
+      "AKL": "NZAA", "CHC": "NZCH", "WLG": "NZWN", "NAN": "NFFN", "PPT": "NTAA", "GRU": "SBGR", "EZE": "SAEZ"
+    };
+
+    function autoFillICAO(type) {
+      const iataInput = document.getElementById(`f-${type}-iata`);
+      const icaoInput = document.getElementById(`f-${type}-icao`);
+      const val = (iataInput.value || '').trim().toUpperCase();
+      if (val.length === 3) {
+        iataInput.value = val;
+        if (AIRPORT_MAP[val]) icaoInput.value = AIRPORT_MAP[val];
+      }
+    }
+
+    function formatHoursToHM(decimalHours) {
+      const totalMinutes = Math.round((Number(decimalHours) || 0) * 60);
+      const hrs = Math.floor(totalMinutes / 60);
+      const mins = totalMinutes % 60;
+      return `${hrs}:${mins.toString().padStart(2, '0')}`;
+    }
+
+    // 步驟 3-2：實時監聽 Firestore 資料變化
+    function initFirestoreListener() {
+      db.collection("flights").orderBy("flight_date", "desc")
+        .onSnapshot((snapshot) => {
+          flights = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          renderFlights();
+        }, (error) => {
+          console.error("Firestore 監聽失敗:", error);
+        });
+    }
+
+    function toggleForm() {
+      const modal = document.getElementById('modal-overlay');
+      modal.classList.toggle('hidden');
+    }
+
+    // 步驟 3-2：新增紀錄至 Firebase Firestore
+    async function handleSubmit(e) {
+      e.preventDefault();
+      const btn = e.target.querySelector('[type="submit"]');
+      btn.disabled = true;
+
+      const record = {
+        flight_date: document.getElementById('f-date').value || new Date().toISOString().split('T')[0],
+        departure_iata: (document.getElementById('f-dep-iata').value || '').toUpperCase(),
+        departure_icao: (document.getElementById('f-dep-icao').value || '').toUpperCase(),
+        destination_iata: (document.getElementById('f-dest-iata').value || '').toUpperCase(),
+        destination_icao: (document.getElementById('f-dest-icao').value || '').toUpperCase(),
+        aircraft_type: document.getElementById('f-aircraft').value,
+        passengers: parseInt(document.getElementById('f-pax').value) || 0,
+        cargo: parseInt(document.getElementById('f-cargo').value) || 0,
+        takeoff_weight: parseInt(document.getElementById('f-tow').value) || 0,
+        tfg: document.getElementById('f-tfg').value,
+        ttg: document.getElementById('f-ttg').value,
+        enr: document.getElementById('f-enr').value,
+        remaining: document.getElementById('f-remaining').value,
+        tfu: document.getElementById('f-tfu').value,
+        flight_level: document.getElementById('f-fl').value,
+        landing_speed: parseInt(document.getElementById('f-lspd').value) || 0,
+        landing_vs: parseInt(document.getElementById('f-lvs').value) || 0,
+        flight_hours: (parseInt(document.getElementById('f-hours').value) || 0) + ((parseInt(document.getElementById('f-minutes').value) || 0) / 60),
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      try {
+        await db.collection("flights").add(record);
+        e.target.reset();
+        toggleForm();
+      } catch (err) {
+        alert('儲存失敗：' + err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function formatAirport(iata, icao) {
+      const displayIata = iata || '—';
+      const tooltipIcao = icao ? `ICAO: ${icao}` : '';
+
+      if (tooltipIcao) {
+        return `<span title="${tooltipIcao}" class="cursor-help border-b border-dotted border-blue-400 hover:text-blue-600 transition-colors">${displayIata}</span>`;
+      }
+      return displayIata;
+    }
+
+    function renderFlights() {
+      const tbody = document.getElementById('flight-table-body');
+      const empty = document.getElementById('empty-state');
+      tbody.innerHTML = '';
+
+      flights.forEach(f => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-blue-50/50 transition-colors whitespace-nowrap text-center align-middle';
+        
+        const depStr = formatAirport(f.departure_iata, f.departure_icao);
+        const destStr = formatAirport(f.destination_iata, f.destination_icao);
+
+        tr.innerHTML = `
+          <td class="p-3 text-slate-800 font-medium text-center align-middle">${f.flight_date || '—'}</td>
+          <td class="p-3 text-center align-middle"><span class="bg-blue-50 text-blue-600 border border-blue-200 px-2 py-0.5 rounded text-xs font-semibold">${f.aircraft_type || '—'}</span></td>
+          <td class="p-3 font-semibold text-slate-800 text-center align-middle">${depStr}</td>
+          <td class="p-3 text-slate-400 text-center px-1 align-middle">
+            <i data-lucide="arrow-right" class="w-3.5 h-3.5 inline-block align-middle"></i>
+          </td>
+          <td class="p-3 font-semibold text-slate-800 text-center align-middle">${destStr}</td>
+          <td class="p-3 font-bold text-center align-middle" style="color: #46A3FF;">${formatHoursToHM(f.flight_hours)}</td>
+          <td class="p-3 text-center align-middle">${f.flight_level ? 'FL' + f.flight_level : '—'}</td>
+          <td class="p-3 text-center align-middle">${f.passengers || 0}</td>
+          <td class="p-3 text-center align-middle">${f.cargo || 0}</td>
+          <td class="p-3 text-center align-middle">${f.takeoff_weight || 0}</td>
+          <td class="p-3 text-slate-600 text-center align-middle">${f.tfg || '—'}</td>
+          <td class="p-3 text-slate-600 text-center align-middle">${f.ttg || '—'}</td>
+          <td class="p-3 text-slate-600 text-center align-middle">${f.enr || '—'}</td>
+          <td class="p-3 text-slate-600 text-center align-middle">${f.remaining || '—'}</td>
+          <td class="p-3 text-slate-600 text-center align-middle">${f.tfu || '—'}</td>
+          <td class="p-3 text-slate-600 text-center align-middle">${f.landing_speed ? f.landing_speed + ' kt' : '—'}</td>
+          <td class="p-3 text-slate-600 text-center align-middle">${f.landing_vs ? f.landing_vs + ' fpm' : '—'}</td>
+          <td class="p-3 text-center align-middle">
+            <button class="text-slate-400 hover:text-red-500 p-1 rounded hover:bg-slate-100 transition-all" title="刪除" onclick="deleteFlight('${f.id}')">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const totalA359 = flights.filter(f => f.aircraft_type === 'A359').reduce((s, f) => s + (Number(f.flight_hours) || 0), 0);
+      const totalA35K = flights.filter(f => f.aircraft_type === 'A35K').reduce((s, f) => s + (Number(f.flight_hours) || 0), 0);
+
+      document.getElementById('hours-a359').textContent = formatHoursToHM(totalA359);
+      document.getElementById('hours-a35k').textContent = formatHoursToHM(totalA35K);
+
+      empty.style.display = flights.length ? 'none' : 'flex';
+      lucide.createIcons();
+    }
+
+    // 步驟 3-2：自 Firebase Firestore 刪除紀錄
+    async function deleteFlight(docId) {
+      if (!docId) return;
+      if (confirm('確定要刪除這筆飛行紀錄嗎？')) {
+        try {
+          await db.collection("flights").doc(docId).delete();
+        } catch (err) {
+          alert('刪除失敗：' + err.message);
+        }
+      }
+    }
+
+    // 初始化程式
+    initFirestoreListener();
+    lucide.createIcons();
+  </script>
+</body>
+</html>
