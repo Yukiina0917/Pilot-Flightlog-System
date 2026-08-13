@@ -256,7 +256,7 @@
     let selectedFilterDate = '';
     let map, routeLayerGroup;
 
-    // 擴充常用全球機場座標 [Lat, Lng]
+    // 常用全球機場座標預設庫
     const AIRPORT_COORDS = {
       "PEK": [40.0799, 116.6031], "PKX": [39.5098, 116.4105], "BCN": [41.2974, 2.0785],
       "JNB": [-26.1367, 28.2411], "KIX": [34.4320, 135.2304], "TPE": [25.0777, 121.2330],
@@ -275,7 +275,7 @@
       "JNB": "FAOR", "KIX": "RJBB", "HND": "RJTT", "NRT": "RJAA", "HKG": "VHHH"
     };
 
-    // 非同步獲取機場經緯度（優先查字典，缺少則向外部 API 查詢並快取）
+    // 獲取機場經緯度（先對比預設，沒有就透過開放 API 查詢）
     async function fetchAirportCoords(code) {
       if (!code) return null;
       const iata = code.trim().toUpperCase();
@@ -328,7 +328,7 @@
         if (start && end) {
           bounds.push(start, end);
 
-          // 計算弧線 (Great Circle)
+          // 大圓弧線繪製
           const generator = new arc.GreatCircle({ x: start[1], y: start[0] }, { x: end[1], y: end[0] });
           const line = generator.Arc(100, { offset: 10 });
           const latLngs = line.geometries[0].coords.map(c => [c[1], c[0]]);
@@ -401,7 +401,7 @@
 
     function initFirestoreListener() {
       db.collection("flights")
-        .onSnapshot((snapshot) => {
+        .onSnapshot(async (snapshot) => {
           flights = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
@@ -416,7 +416,7 @@
             return timeB - timeA;
           });
 
-          renderFlights();
+          await renderFlights();
         }, (error) => {
           console.error("Firestore 監聽失敗:", error);
         });
@@ -516,7 +516,7 @@
         : displayIata;
     }
 
-    function renderFlights() {
+    async function renderFlights() {
       const tbody = document.getElementById('flight-table-body');
       const empty = document.getElementById('empty-state');
       const emptyMsg = document.getElementById('empty-msg');
@@ -572,7 +572,8 @@
       }
       
       lucide.createIcons();
-      updateMapRoutes(filteredFlights);
+      // 等待地圖與座標渲染完成
+      await updateMapRoutes(filteredFlights);
     }
 
     async function deleteFlight(docId) {
