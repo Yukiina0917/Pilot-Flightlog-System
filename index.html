@@ -129,9 +129,35 @@
                 <input type="date" id="date-search-input" class="absolute opacity-0 pointer-events-none w-0 h-0 bottom-0 left-1/2" onchange="filterByDate(this.value)"/>
               </th>
               <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">機型</th>
-              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">出發地</th>
+              
+              <!-- 出發地表頭：增加搜尋與清除按鈕 -->
+              <th class="p-3 font-semibold text-center align-middle bg-[#23569d] relative">
+                <div class="inline-flex items-center justify-center gap-1.5">
+                  <span>出發地</span>
+                  <button type="button" onclick="openDepSearchPrompt()" class="hover:text-blue-200 transition-colors focus:outline-none cursor-pointer" title="搜尋出發地">
+                    <i data-lucide="search" class="w-3.5 h-3.5 inline-block"></i>
+                  </button>
+                  <button id="reset-dep-btn" type="button" onclick="resetDepFilter()" class="hidden hover:text-red-300 transition-colors focus:outline-none cursor-pointer" title="清除搜尋">
+                    <i data-lucide="x-circle" class="w-3.5 h-3.5 inline-block"></i>
+                  </button>
+                </div>
+              </th>
+
               <th class="p-3 font-semibold text-center align-middle bg-[#23569d] w-6"></th>
-              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">目的地</th>
+
+              <!-- 目的地表頭：增加搜尋與清除按鈕 -->
+              <th class="p-3 font-semibold text-center align-middle bg-[#23569d] relative">
+                <div class="inline-flex items-center justify-center gap-1.5">
+                  <span>目的地</span>
+                  <button type="button" onclick="openDestSearchPrompt()" class="hover:text-blue-200 transition-colors focus:outline-none cursor-pointer" title="搜尋目的地">
+                    <i data-lucide="search" class="w-3.5 h-3.5 inline-block"></i>
+                  </button>
+                  <button id="reset-dest-btn" type="button" onclick="resetDestFilter()" class="hidden hover:text-red-300 transition-colors focus:outline-none cursor-pointer" title="清除搜尋">
+                    <i data-lucide="x-circle" class="w-3.5 h-3.5 inline-block"></i>
+                  </button>
+                </div>
+              </th>
+
               <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">飛行時間</th>
               <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">高度 (FL)</th>
               <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">PAX</th>
@@ -274,6 +300,8 @@
   <script>
     let flights = [];
     let selectedFilterDate = '';
+    let selectedFilterDep = '';
+    let selectedFilterDest = '';
     let map, routeLayerGroup;
 
     // 超大型全球機場座標庫 [緯度, 經度]
@@ -516,6 +544,7 @@
       return `${hrs}:${mins.toString().padStart(2, '0')}`;
     }
 
+    // ===== 日期搜尋 =====
     function openDatePicker() {
       const dateInput = document.getElementById('date-search-input');
       if (dateInput) {
@@ -538,6 +567,50 @@
       const dateInput = document.getElementById('date-search-input');
       if (dateInput) dateInput.value = '';
       filterByDate('');
+    }
+
+    // ===== 新增：出發地搜尋 =====
+    function openDepSearchPrompt() {
+      const input = prompt('請輸入出發地 IATA 或 ICAO 代碼（例：TPE 或 RCTP）：', selectedFilterDep);
+      if (input !== null) {
+        filterByDep(input.trim());
+      }
+    }
+
+    function filterByDep(val) {
+      selectedFilterDep = val.toUpperCase();
+      const resetBtn = document.getElementById('reset-dep-btn');
+      if (resetBtn) {
+        if (selectedFilterDep) resetBtn.classList.remove('hidden');
+        else resetBtn.classList.add('hidden');
+      }
+      renderFlights();
+    }
+
+    function resetDepFilter() {
+      filterByDep('');
+    }
+
+    // ===== 新增：目的地搜尋 =====
+    function openDestSearchPrompt() {
+      const input = prompt('請輸入目的地 IATA 或 ICAO 代碼（例：HND 或 RJTT）：', selectedFilterDest);
+      if (input !== null) {
+        filterByDest(input.trim());
+      }
+    }
+
+    function filterByDest(val) {
+      selectedFilterDest = val.toUpperCase();
+      const resetBtn = document.getElementById('reset-dest-btn');
+      if (resetBtn) {
+        if (selectedFilterDest) resetBtn.classList.remove('hidden');
+        else resetBtn.classList.add('hidden');
+      }
+      renderFlights();
+    }
+
+    function resetDestFilter() {
+      filterByDest('');
     }
 
     function initFirestoreListener() {
@@ -663,9 +736,30 @@
       const emptyMsg = document.getElementById('empty-msg');
       tbody.innerHTML = '';
 
-      const filteredFlights = selectedFilterDate 
-        ? flights.filter(f => f.flight_date === selectedFilterDate)
-        : flights;
+      // 綜合多重條件過濾：日期、出發地、目的地（支援 IATA 或 ICAO 模糊比對）
+      const filteredFlights = flights.filter(f => {
+        let matchDate = true;
+        let matchDep = true;
+        let matchDest = true;
+
+        if (selectedFilterDate) {
+          matchDate = (f.flight_date === selectedFilterDate);
+        }
+
+        if (selectedFilterDep) {
+          const iata = (f.departure_iata || '').toUpperCase();
+          const icao = (f.departure_icao || '').toUpperCase();
+          matchDep = iata.includes(selectedFilterDep) || icao.includes(selectedFilterDep);
+        }
+
+        if (selectedFilterDest) {
+          const iata = (f.destination_iata || '').toUpperCase();
+          const icao = (f.destination_icao || '').toUpperCase();
+          matchDest = iata.includes(selectedFilterDest) || icao.includes(selectedFilterDest);
+        }
+
+        return matchDate && matchDep && matchDest;
+      });
 
       filteredFlights.forEach(f => {
         const tr = document.createElement('tr');
@@ -709,7 +803,14 @@
         empty.style.display = 'none';
       } else {
         empty.style.display = 'flex';
-        emptyMsg.textContent = selectedFilterDate ? `找不到 ${selectedFilterDate} 的飛行紀錄` : '尚無飛行紀錄，點擊按鈕新增紀錄';
+        const activeFilters = [];
+        if (selectedFilterDate) activeFilters.push(`日期: ${selectedFilterDate}`);
+        if (selectedFilterDep) activeFilters.push(`出發地: ${selectedFilterDep}`);
+        if (selectedFilterDest) activeFilters.push(`目的地: ${selectedFilterDest}`);
+        
+        emptyMsg.textContent = activeFilters.length 
+          ? `找不到符合條件 (${activeFilters.join(', ')}) 的飛行紀錄` 
+          : '尚無飛行紀錄，點擊按鈕新增紀錄';
       }
       
       lucide.createIcons();
@@ -724,7 +825,7 @@
       }
     }
 
-    // ===== 新增：CSV 匯出 / 匯入 功能 =====
+    // ===== CSV 匯出 / 匯入 功能 =====
     function exportToCSV() {
       if (!flights || flights.length === 0) {
         alert('目前無資料可供匯出');
