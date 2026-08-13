@@ -293,20 +293,27 @@
       return null;
     }
 
+    function adjustLongitudeForPacificView(coord) {
+      if (!coord) return null;
+      let [lat, lon] = coord;
+      if (lon < -20) {
+        lon += 360;
+      }
+      return [lat, lon];
+    }
+
     function initMap() {
       map = L.map('map', {
-        center: [20, 0],
-        zoom: 2,
-        minZoom: 2,
+        center: [20, 160],
+        zoom: 1,
+        minZoom: 1,
         zoomControl: true,
-        maxBounds: [[-90, -180], [90, 180]],
-        maxBoundsViscosity: 1.0
+        worldCopyJump: false
       });
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap &copy; CARTO',
-        maxZoom: 18,
-        noWrap: true
+        maxZoom: 18
       }).addTo(map);
 
       routeLayerGroup = L.layerGroup().addTo(map);
@@ -374,10 +381,13 @@
         if (!dep || !dest) continue;
 
         try {
-          const startCoords = await fetchAirportCoords(dep);
-          const endCoords = await fetchAirportCoords(dest);
+          const rawStartCoords = await fetchAirportCoords(dep);
+          const rawEndCoords = await fetchAirportCoords(dest);
 
-          if (startCoords && endCoords) {
+          if (rawStartCoords && rawEndCoords) {
+            const startCoords = adjustLongitudeForPacificView(rawStartCoords);
+            const endCoords = adjustLongitudeForPacificView(rawEndCoords);
+
             bounds.push(startCoords, endCoords);
 
             const splitArcs = getSplitGreatCircleArcs(startCoords, endCoords, 80);
