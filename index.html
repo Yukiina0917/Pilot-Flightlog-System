@@ -256,34 +256,51 @@
     let selectedFilterDate = '';
     let map, routeLayerGroup;
 
-    // 擴充全球常見機場座標庫 (包含 PVG, GRU, DXB 等)
+    // 全球主要國際機場座標數據庫 [緯度, 經度]
     const AIRPORT_COORDS = {
-      "TPE": [25.0777, 121.2330], "TSA": [25.0697, 121.5525], "KHH": [22.5771, 120.3500],
-      "PVG": [31.1443, 121.8083], "SHA": [31.1979, 121.3363], "PEK": [40.0799, 116.6031],
-      "PKX": [39.5098, 116.4105], "CAN": [23.3924, 113.2988], "HKG": [22.3080, 113.9185],
-      "MFM": [22.1496, 113.5916], "DXB": [25.2532, 55.3657],  "GRU": [-23.4356, -46.4731],
-      "JFK": [40.6413, -73.7781], "LAX": [33.9416, -118.4085], "SFO": [37.6213, -122.3790],
-      "ORD": [41.9742, -87.9073], "SEA": [47.4502, -122.3088], "HND": [35.5494, 139.7798],
-      "NRT": [35.7647, 140.3863], "KIX": [34.4320, 135.2304], "CTS": [42.7752, 141.6923],
-      "FUK": [33.5859, 130.4507], "OKA": [26.1958, 127.6458], "ICN": [37.4602, 126.4407],
-      "GMP": [37.5583, 126.7906], "PUS": [35.1795, 128.9382], "SIN": [1.3644, 103.9915],
-      "BKK": [13.6900, 100.7501], "LHR": [51.4700, -0.4543],  "CDG": [49.0097, 2.5479],
-      "FRA": [50.0379, 8.5622],   "AMS": [52.3105, 4.7683],   "BCN": [41.2974, 2.0785],
-      "SYD": [-33.9399, 151.1753], "JNB": [-26.1367, 28.2411]
+      // 台灣及東亞
+      "TPE": [25.0777, 121.2330], "TSA": [25.0697, 121.5525], "KHH": [22.5771, 120.3500], "RMQ": [24.2646, 120.6210],
+      "HKG": [22.3080, 113.9185], "MFM": [22.1496, 113.5916],
+      "HND": [35.5494, 139.7798], "NRT": [35.7647, 140.3863], "KIX": [34.4320, 135.2304], "NGO": [34.8583, 136.8053], "CTS": [42.7752, 141.6923], "FUK": [33.5859, 130.4507], "OKA": [26.1958, 127.6458],
+      "ICN": [37.4602, 126.4407], "GMP": [37.5583, 126.7906], "PUS": [35.1795, 128.9382], "CJU": [33.5113, 126.4928],
+      // 中國大陸
+      "PVG": [31.1443, 121.8083], "SHA": [31.1979, 121.3363], "PEK": [40.0799, 116.6031], "PKX": [39.5098, 116.4105], "CAN": [23.3924, 113.2988], "SZX": [22.6393, 113.8107], "CTU": [30.5785, 103.9471], "TFU": [30.3086, 104.4442], "CKG": [29.7192, 106.6417], "HGH": [30.2295, 120.4344],
+      // 東南亞
+      "SIN": [1.3644, 103.9915], "BKK": [13.6900, 100.7501], "DMK": [13.9126, 100.6068], "KUL": [2.7456, 101.7099], "MNL": [14.5086, 121.0194], "CGK": [-6.1256, 106.6558], "DPS": [-8.7482, 115.1672], "SGN": [10.8188, 106.6519], "HAN": [21.2212, 105.8072], "PNH": [11.5466, 104.8441],
+      // 北美洲
+      "LAX": [33.9416, -118.4085], "SFO": [37.6213, -122.3790], "JFK": [40.6413, -73.7781], "EWR": [40.6925, -74.1686], "ORD": [41.9742, -87.9073], "SEA": [47.4502, -122.3088], "DFW": [32.8998, -97.0403], "ATL": [33.6407, -84.4277], "MIA": [25.7959, -80.2870], "YVR": [49.1967, -123.1815], "YYZ": [43.6777, -79.6248],
+      // 歐洲
+      "LHR": [51.4700, -0.4543], "CDG": [49.0097, 2.5479], "FRA": [50.0379, 8.5622], "AMS": [52.3105, 4.7683], "BCN": [41.2974, 2.0785], "MAD": [40.4839, -3.5680], "FCO": [41.8003, 12.2389], "ZRH": [47.4582, 8.5555], "VIE": [48.1103, 16.5697], "MUC": [48.3537, 11.7861], "IST": [41.2753, 28.7519], "SVO": [55.9726, 37.4146],
+      // 中東與南亞
+      "DXB": [25.2532, 55.3657], "DOH": [25.2731, 51.6081], "AUH": [24.4330, 54.6511], "DEL": [28.5562, 77.1000], "BOM": [19.0896, 72.8656],
+      // 大洋洲
+      "SYD": [-33.9399, 151.1753], "MEL": [-37.6690, 144.8410], "BNE": [-27.3842, 153.1175], "AKL": [-37.0082, 174.7850], "GUM": [13.4839, 144.7960],
+      // 南美洲與中美洲
+      "GRU": [-23.4356, -46.4731], "GIG": [-22.8099, -43.2505], "EZE": [-34.8222, -58.5358], "SCL": [-33.3930, -70.7858], "BOG": [4.7016, -74.1469], "MEX": [19.4363, -99.0721],
+      // 非洲
+      "JNB": [-26.1367, 28.2411], "CAI": [30.1219, 31.4056], "CPT": [-33.9715, 18.6021], "ADD": [8.9779, 38.7993]
     };
 
+    // IATA 對應 ICAO 自動補全對照表
     const AIRPORT_MAP = {
-      "TPE": "RCTP", "TSA": "RCSS", "KHH": "RCKH", "PEK": "ZBAA", "PVG": "ZSPD",
-      "DXB": "OMDB", "GRU": "SBGR", "HND": "RJTT", "NRT": "RJAA", "HKG": "VHHH"
+      "TPE": "RCTP", "TSA": "RCSS", "KHH": "RCKH", "RMQ": "RCMQ", "HKG": "VHHH", "MFM": "VMMC",
+      "HND": "RJTT", "NRT": "RJAA", "KIX": "RJBB", "NGO": "RJGG", "CTS": "RJCC", "FUK": "RJFF", "OKA": "ROAH",
+      "ICN": "RKSI", "GMP": "RKSS", "PUS": "RKPK", "CJU": "RKPC",
+      "PVG": "ZSPD", "SHA": "ZSSS", "PEK": "ZBAA", "PKX": "ZBAD", "CAN": "ZGGG", "SZX": "ZGSZ", "CTU": "ZUUU", "TFU": "ZATL", "CKG": "ZUCK", "HGH": "ZSHC",
+      "SIN": "WSSS", "BKK": "VTBS", "DMK": "VTBD", "KUL": "WMKK", "MNL": "RPLL", "CGK": "WIII", "DPS": "WADD", "SGN": "VVTS", "HAN": "VVNB",
+      "LAX": "KLAX", "SFO": "KSFO", "JFK": "KJFK", "EWR": "KEWR", "ORD": "KORD", "SEA": "KSEA", "DFW": "KDFW", "ATL": "KATL", "MIA": "KMIA", "YVR": "CYVR", "YYZ": "CYYZ",
+      "LHR": "EGLL", "CDG": "LFPG", "FRA": "EDDF", "AMS": "EHAM", "BCN": "LEBL", "MAD": "LEMD", "FCO": "LIRF", "ZRH": "LSZH", "VIE": "LOWW", "MUC": "EDDM", "IST": "LTFM",
+      "DXB": "OMDB", "DOH": "OTHH", "AUH": "OMAA", "DEL": "VIDP", "BOM": "VABB",
+      "SYD": "YSSY", "MEL": "YMML", "BNE": "YBBN", "AKL": "NZAA", "GUM": "PGUM",
+      "GRU": "SBGR", "GIG": "SBGL", "EZE": "SAEZ", "SCL": "SCEL", "BOG": "SKBO", "MEX": "MMMX",
+      "JNB": "FAOR", "CAI": "HECA", "CPT": "FACT", "ADD": "HAAB"
     };
 
-    // 獲取機場座標（多重備用 API 與錯誤防護）
     async function fetchAirportCoords(code) {
       if (!code) return null;
       const iata = code.trim().toUpperCase();
       if (AIRPORT_COORDS[iata]) return AIRPORT_COORDS[iata];
 
-      // API 備援方案 1: air-port-codes API
       try {
         const res = await fetch(`https://port-api.com/airport/iata/${iata}`);
         if (res.ok) {
@@ -295,9 +312,8 @@
           }
         }
       } catch (e) {
-        console.warn(`[API 1] 取得 ${iata} 座標失敗`, e);
+        console.warn(`無效的機場代碼或 API 無法取得: ${iata}`, e);
       }
-
       return null;
     }
 
@@ -335,7 +351,6 @@
           if (start && end) {
             bounds.push(start, end);
 
-            // 繪製航線 (弧線 or 直線備用)
             let latLngs = [];
             try {
               const generator = new arc.GreatCircle(
@@ -345,7 +360,6 @@
               const line = generator.Arc(100, { offset: 10 });
               latLngs = line.geometries[0].coords.map(c => [c[1], c[0]]);
             } catch (arcErr) {
-              // 若大圓弧線計算異常（例如超長距離或跨極點），回退至直線繪製
               latLngs = [start, end];
             }
 
@@ -356,7 +370,6 @@
               dashArray: '6, 6'
             }).addTo(routeLayerGroup);
 
-            // 標示起降機場點
             [ { coord: start, code: dep, type: 'dep' }, { coord: end, code: dest, type: 'dest' } ].forEach(item => {
               L.circleMarker(item.coord, {
                 radius: 4,
