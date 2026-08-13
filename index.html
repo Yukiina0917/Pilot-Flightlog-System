@@ -74,35 +74,38 @@
       
     <!-- 表格容器 -->
     <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-md flex-grow flex flex-col">
-      <div class="overflow-x-auto w-full">
-        <table class="w-full text-center border-collapse text-xs">
-          <thead>
-            <tr style="background-color: #23569d;" class="text-white border-b border-blue-900 whitespace-nowrap">
-              <th class="p-3 font-semibold text-center align-middle">日期</th>
-              <th class="p-3 font-semibold text-center align-middle">機型</th>
-              <th class="p-3 font-semibold text-center align-middle">出發地</th>
-              <th class="p-3 font-semibold text-center align-middle w-6"></th>
-              <th class="p-3 font-semibold text-center align-middle">目的地</th>
-              <th class="p-3 font-semibold text-center align-middle">飛行時間</th>
-              <th class="p-3 font-semibold text-center align-middle">高度 (FL)</th>
-              <th class="p-3 font-semibold text-center align-middle">PAX</th>
-              <th class="p-3 font-semibold text-center align-middle">Cargo</th>
-              <th class="p-3 font-semibold text-center align-middle">起飛重量</th>
-              <th class="p-3 font-semibold text-center align-middle">TFG</th>
-              <th class="p-3 font-semibold text-center align-middle">TTG</th>
-              <th class="p-3 font-semibold text-center align-middle">ENR</th>
-              <th class="p-3 font-semibold text-center align-middle">Remaining</th>
-              <th class="p-3 font-semibold text-center align-middle">TFU</th>
-              <th class="p-3 font-semibold text-center align-middle">降落速度</th>
-              <th class="p-3 font-semibold text-center align-middle">Landing V/S</th>
-              <th class="p-3 font-semibold text-center align-middle">操作</th>
-            </tr>
-          </thead>
-          <tbody id="flight-table-body" class="divide-y divide-slate-200 text-slate-700">
-            <!-- 動態渲染表格內容 -->
-          </tbody>
-        </table>
-      </div>
+  <!-- 加入 max-h-[600px] 限制最大高度，並開啟 vertical 滾動 (可依需求調整高度) -->
+  <div class="overflow-x-auto overflow-y-auto max-h-[600px] w-full">
+    <table class="w-full text-center border-collapse text-xs">
+      <thead>
+        <!-- 加入 sticky top-0 z-10 固定表頭 -->
+        <tr style="background-color: #23569d;" class="sticky top-0 z-10 text-white border-b border-blue-900 whitespace-nowrap shadow-sm">
+          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">日期</th>
+          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">機型</th>
+          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">出發地</th>
+          <th class="p-3 font-semibold text-center align-middle bg-[#23569d] w-6"></th>
+          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">目的地</th>
+          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">飛行時間</th>
+          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">高度 (FL)</th>
+          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">PAX</th>
+          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">Cargo</th>
+          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">起飛重量</th>
+          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">TFG</th>
+          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">TTG</th>
+          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">ENR</th>
+          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">Remaining</th>
+          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">TFU</th>
+          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">降落速度</th>
+          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">Landing V/S</th>
+          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">操作</th>
+        </tr>
+      </thead>
+      <tbody id="flight-table-body" class="divide-y divide-slate-200 text-slate-700">
+        <!-- 動態渲染表格內容 -->
+      </tbody>
+    </table>
+  </div>
+</div>
       
       <!-- 空資料提示 -->
       <div id="empty-state" class="py-16 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
