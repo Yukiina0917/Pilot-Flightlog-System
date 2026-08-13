@@ -27,8 +27,7 @@
     
     #map {
       width: 100%;
-      aspect-ratio: 4 / 3;
-      max-height: 380px;
+      height: 260px;
       border-radius: 0.75rem;
       z-index: 10;
       background-color: #e5e7eb;
@@ -82,7 +81,7 @@
   </header>
 
   <main class="max-w-[96vw] mx-auto px-4 py-4 w-full h-[calc(100vh-80px)] flex flex-col gap-4 overflow-hidden">
-    <div class="bg-white rounded-xl border border-slate-200 p-2 shadow-sm shrink-0 flex justify-center">
+    <div class="bg-white rounded-xl border border-slate-200 p-2 shadow-sm shrink-0">
       <div id="map"></div>
     </div>
 
@@ -361,19 +360,19 @@
     }
 
     function initMap() {
-      // 將地圖中心設定在經度 160 度（太平洋中心），美洲會顯示在右邊
       map = L.map('map', {
-        center: [20, 160],
-        zoom: 1.5,
-        minZoom: 1,
+        center: [20, 0],
+        zoom: 2,
+        minZoom: 2,
         zoomControl: true,
-        worldCopyJump: true
+        maxBounds: [[-90, -180], [90, 180]],
+        maxBoundsViscosity: 1.0
       });
 
-      // 移除 noWrap，允許太平洋跨線連續顯示
       L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap &copy; CARTO',
-        maxZoom: 18
+        maxZoom: 18,
+        noWrap: true
       }).addTo(map);
 
       routeLayerGroup = L.layerGroup().addTo(map);
@@ -432,6 +431,8 @@
       if (!map || !routeLayerGroup) return;
       routeLayerGroup.clearLayers();
 
+      const bounds = [];
+
       for (const f of flightList) {
         const dep = f.departure_iata;
         const dest = f.destination_iata;
@@ -443,6 +444,8 @@
           const endCoords = await fetchAirportCoords(dest);
 
           if (startCoords && endCoords) {
+            bounds.push(startCoords, endCoords);
+
             const splitArcs = getSplitGreatCircleArcs(startCoords, endCoords, 80);
 
             splitArcs.forEach(arc => {
@@ -468,6 +471,10 @@
         } catch (err) {
           console.error(`繪製 ${dep} -> ${dest} 失敗:`, err);
         }
+      }
+
+      if (bounds.length > 0) {
+        map.fitBounds(bounds, { padding: [30, 30] });
       }
     }
 
