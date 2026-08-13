@@ -27,7 +27,7 @@
     
     #map {
       width: 100%;
-      height: 180px;
+      height: 320px;
       border-radius: 0.75rem;
       z-index: 10;
       background-color: #e5e7eb;
@@ -81,36 +81,10 @@
   </header>
 
   <main class="max-w-[96vw] mx-auto px-4 py-4 w-full h-[calc(100vh-80px)] flex flex-col gap-4 overflow-hidden">
-    <!-- 上方區域：地圖與右側操作按鈕區 -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 shrink-0 items-center">
-      <!-- 左側 3 欄放置地圖 -->
-      <div class="md:col-span-3 bg-white rounded-xl border border-slate-200 p-2 shadow-sm">
-        <div id="map"></div>
-      </div>
-
-      <!-- 右側 1 欄放置控制按鈕 -->
-      <div class="bg-slate-50 rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col gap-3 justify-center h-full">
-        <button onclick="openCreateModal()" class="w-full text-white font-semibold py-2.5 px-4 rounded-lg shadow transition-all hover:opacity-90 flex items-center justify-center gap-2" style="background-color: #23569d;">
-          <i data-lucide="plus-circle" class="w-5 h-5"></i>
-          <span>新增飛行紀錄</span>
-        </button>
-
-        <div class="grid grid-cols-2 gap-2">
-          <button onclick="exportToCSV()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-3 rounded-lg shadow text-xs flex items-center justify-center gap-1.5 transition-colors">
-            <i data-lucide="file-spread-sheet" class="w-4 h-4"></i>
-            <span>匯出 CSV</span>
-          </button>
-
-          <label class="w-full bg-slate-700 hover:bg-slate-800 text-white font-medium py-2 px-3 rounded-lg shadow text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer">
-            <i data-lucide="upload" class="w-4 h-4"></i>
-            <span>匯入 CSV</span>
-            <input type="file" id="csv-file-input" accept=".csv" class="hidden" onchange="importFromCSV(event)">
-          </label>
-        </div>
-      </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-2 shadow-sm shrink-0">
+      <div id="map"></div>
     </div>
 
-    <!-- 下方紀錄表格 -->
     <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-md flex-1 flex flex-col min-h-0">
       <div class="overflow-x-auto overflow-y-auto h-full w-full flex-1">
         <table class="w-full text-center border-collapse text-xs">
@@ -153,10 +127,15 @@
       
       <div id="empty-state" class="py-12 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
         <i data-lucide="plane-takeoff" class="w-10 h-10 opacity-50"></i>
-        <p class="text-sm" id="empty-msg">尚無飛行紀錄，點擊按鈕新增紀錄</p>
+        <p class="text-sm" id="empty-msg">尚無飛行紀錄，點擊右下角按鈕新增紀錄</p>
       </div>
     </div>
   </main>
+
+  <button id="fab-add-btn" class="fixed bottom-6 right-6 text-white rounded-full p-4 shadow-xl flex items-center gap-2 transition-all duration-300 hover:scale-105 z-40 border border-blue-300" onclick="openCreateModal()" style="background-color: #23569d;">
+    <i data-lucide="plus" class="w-6 h-6"></i>
+    <span class="font-medium pr-1 text-sm hidden sm:inline">新增紀錄</span>
+  </button>
 
   <div id="modal-overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
     <div class="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl relative my-8">
@@ -276,6 +255,7 @@
     let selectedFilterDate = '';
     let map, routeLayerGroup;
 
+    // 超大型全球機場座標庫 [緯度, 經度]
     const AIRPORT_COORDS = {
       "TPE": [25.0777, 121.2330], "TSA": [25.0697, 121.5525], "KHH": [22.5771, 120.3500], "RMQ": [24.2646, 120.6210], "HKG": [22.3080, 113.9185], "MFM": [22.1496, 113.5916],
       "PEK": [40.0799, 116.6031], "PKX": [39.5098, 116.4105], "PVG": [31.1443, 121.8083], "SHA": [31.1979, 121.3363],
@@ -363,19 +343,20 @@
     }
 
     function initMap() {
+      // 太平洋中心視角，防止地圖複製重複
       map = L.map('map', {
-        center: [20, 0],
-        zoom: 2,
-        minZoom: 2,
+        center: [20, 160],
+        zoom: 1.5,
+        minZoom: 1,
         zoomControl: true,
-        maxBounds: [[-90, -180], [90, 180]],
-        maxBoundsViscosity: 1.0
+        worldCopyJump: false,
+        maxBounds: [[-90, -30], [90, 330]]
       });
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap &copy; CARTO',
         maxZoom: 18,
-        noWrap: true
+        noWrap: false
       }).addTo(map);
 
       routeLayerGroup = L.layerGroup().addTo(map);
@@ -434,8 +415,6 @@
       if (!map || !routeLayerGroup) return;
       routeLayerGroup.clearLayers();
 
-      const bounds = [];
-
       for (const f of flightList) {
         const dep = f.departure_iata;
         const dest = f.destination_iata;
@@ -447,8 +426,6 @@
           const endCoords = await fetchAirportCoords(dest);
 
           if (startCoords && endCoords) {
-            bounds.push(startCoords, endCoords);
-
             const splitArcs = getSplitGreatCircleArcs(startCoords, endCoords, 80);
 
             splitArcs.forEach(arc => {
@@ -474,10 +451,6 @@
         } catch (err) {
           console.error(`繪製 ${dep} -> ${dest} 失敗:`, err);
         }
-      }
-
-      if (bounds.length > 0) {
-        map.fitBounds(bounds, { padding: [30, 30] });
       }
     }
 
@@ -691,7 +664,7 @@
         empty.style.display = 'none';
       } else {
         empty.style.display = 'flex';
-        emptyMsg.textContent = selectedFilterDate ? `找不到 ${selectedFilterDate} 的飛行紀錄` : '尚無飛行紀錄，點擊按鈕新增紀錄';
+        emptyMsg.textContent = selectedFilterDate ? `找不到 ${selectedFilterDate} 的飛行紀錄` : '尚無飛行紀錄，點擊右下角按鈕新增紀錄';
       }
       
       lucide.createIcons();
@@ -704,92 +677,6 @@
         try { await db.collection("flights").doc(docId).delete(); }
         catch (err) { alert('刪除失敗：' + err.message); }
       }
-    }
-
-    // ===== 新增：CSV 匯出 / 匯入 功能 =====
-    function exportToCSV() {
-      if (!flights || flights.length === 0) {
-        alert('目前無資料可供匯出');
-        return;
-      }
-
-      const headers = [
-        'flight_date', 'aircraft_type', 'departure_iata', 'departure_icao', 
-        'destination_iata', 'destination_icao', 'flight_hours', 'flight_level', 
-        'passengers', 'cargo', 'takeoff_weight', 'tfg', 'ttg', 'enr', 
-        'remaining', 'tfu', 'landing_speed', 'landing_vs'
-      ];
-
-      const csvRows = [headers.join(',')];
-
-      flights.forEach(f => {
-        const row = headers.map(header => {
-          let val = f[header] ?? '';
-          if (typeof val === 'string' && (val.includes(',') || val.includes('"') || val.includes('\n'))) {
-            val = `"${val.replace(/"/g, '""')}"`;
-          }
-          return val;
-        });
-        csvRows.push(row.join(','));
-      });
-
-      const csvContent = '\uFEFF' + csvRows.join('\n'); // 加上 UTF-8 BOM 避免 Excel 打開亂碼
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `flight_log_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-
-    function importFromCSV(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = async (evt) => {
-        try {
-          const text = evt.target.result;
-          const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
-          if (lines.length < 2) {
-            alert('CSV 檔案格式錯誤或內容為空');
-            return;
-          }
-
-          const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-          const batch = db.batch();
-
-          for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-            const record = {};
-
-            headers.forEach((h, idx) => {
-              let val = values[idx] || '';
-              if (['passengers', 'cargo', 'takeoff_weight', 'landing_speed', 'landing_vs'].includes(h)) {
-                val = parseInt(val) || 0;
-              } else if (h === 'flight_hours') {
-                val = parseFloat(val) || 0;
-              }
-              record[h] = val;
-            });
-
-            record.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-            const docRef = db.collection("flights").doc();
-            batch.set(docRef, record);
-          }
-
-          await batch.commit();
-          alert(`成功匯入 ${lines.length - 1} 筆紀錄！`);
-        } catch (err) {
-          alert('匯入失敗：' + err.message);
-        } finally {
-          e.target.value = '';
-        }
-      };
-
-      reader.readAsText(file);
     }
 
     window.onload = () => {
