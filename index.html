@@ -15,7 +15,7 @@
     ::-webkit-scrollbar { height: 8px; width: 8px; }
     ::-webkit-scrollbar-track { background: #f1f5f9; }
     ::-webkit-scrollbar-thumb { background: #23569d; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #1a427a; }
+    ::-webkit-scrollbar-thumb:hover { background: #1a427a; }
   </style>
 
   <!-- Firebase Web SDK v10 (Compat Mode) -->
@@ -37,80 +37,104 @@
   </script>
 </head>
 
-<header class="sticky top-0 z-30 bg-white text-slate-800 border-b border-slate-200 px-6 py-4 shrink-0 shadow-sm">
-  <div class="max-w-[96vw] mx-auto flex items-center justify-between">
-    <!-- 左側 Logo 與標題 -->
-    <a href="#" class="flex items-center gap-4 hover:opacity-80 transition-opacity">
-      <img src="https://yukiina0917.sirv.com/Images/3335b2eb03000002ebcc.png" alt="Logo" class="h-20 w-auto object-contain">
-      <span class="text-2xl font-bold tracking-wide text-slate-900">FlightLog System</span>
-    </a>
+<body class="flex flex-col min-h-screen">
+  <header class="sticky top-0 z-30 bg-white text-slate-800 border-b border-slate-200 px-6 py-4 shrink-0 shadow-sm">
+    <div class="max-w-[96vw] mx-auto flex items-center justify-between">
+      <!-- 左側 Logo 與標題 -->
+      <a href="#" class="flex items-center gap-4 hover:opacity-80 transition-opacity">
+        <img src="https://yukiina0917.sirv.com/Images/3335b2eb03000002ebcc.png" alt="Logo" class="h-20 w-auto object-contain">
+        <span class="text-2xl font-bold tracking-wide text-slate-900">FlightLog System</span>
+      </a>
 
-    <!-- 右側：機長資訊與時數統計區塊 -->
-    <div class="flex items-center gap-6">
-      <!-- Pilot 與 Type Rating 資訊 -->
-      <div class="text-right border-r border-slate-200 pr-6 hidden sm:block">
-        <p class="text-sm font-bold text-slate-800 tracking-wide">Pilot Capt. Yukiina</p>
-        <p class="text-xs font-medium text-slate-500 tracking-normal">Type Rating A350 XWB Series</p>
-      </div>
-
-      <!-- 時數統計 -->
-      <div class="flex items-center gap-3 text-sm font-semibold">
-        <div class="bg-slate-50 px-3.5 py-1.5 rounded-lg border border-slate-200 shadow-sm">
-          <span class="text-slate-500 mr-2">A359:</span>
-          <span id="hours-a359" style="color: #23569d;" class="text-base font-bold">0:00</span>
+      <!-- 右側：機長資訊與時數統計區塊 -->
+      <div class="flex items-center gap-6">
+        <!-- Pilot 與 Type Rating 資訊 -->
+        <div class="text-right border-r border-slate-200 pr-6 hidden sm:block">
+          <p class="text-sm font-bold text-slate-800 tracking-wide">Pilot Capt. Yukiina</p>
+          <p class="text-xs font-medium text-slate-500 tracking-normal">Type Rating A350 XWB Series</p>
         </div>
-        <div class="bg-slate-50 px-3.5 py-1.5 rounded-lg border border-slate-200 shadow-sm">
-          <span class="text-slate-500 mr-2">A35K:</span>
-          <span id="hours-a35k" style="color: #23569d;" class="text-base font-bold">0:00</span>
+
+        <!-- 時數統計 -->
+        <div class="flex items-center gap-3 text-sm font-semibold">
+          <div class="bg-slate-50 px-3.5 py-1.5 rounded-lg border border-slate-200 shadow-sm">
+            <span class="text-slate-500 mr-2">A359:</span>
+            <span id="hours-a359" style="color: #23569d;" class="text-base font-bold">0:00</span>
+          </div>
+          <div class="bg-slate-50 px-3.5 py-1.5 rounded-lg border border-slate-200 shadow-sm">
+            <span class="text-slate-500 mr-2">A35K:</span>
+            <span id="hours-a35k" style="color: #23569d;" class="text-base font-bold">0:00</span>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-</header>
+  </header>
 
   <main class="max-w-[96vw] mx-auto px-4 py-6 w-full flex-grow flex flex-col">
-    <!-- 頁首統計列 -->
-    
-      
     <!-- 表格容器 -->
     <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-md flex-grow flex flex-col">
-  <!-- 加入 max-h-[600px] 限制最大高度，並開啟 vertical 滾動 (可依需求調整高度) -->
-  <div class="overflow-x-auto overflow-y-auto max-h-[600px] w-full">
-    <table class="w-full text-center border-collapse text-xs">
-      <thead>
-        <!-- 加入 sticky top-0 z-10 固定表頭 -->
-        <tr style="background-color: #23569d;" class="sticky top-0 z-10 text-white border-b border-blue-900 whitespace-nowrap shadow-sm">
-          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">日期</th>
-          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">機型</th>
-          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">出發地</th>
-          <th class="p-3 font-semibold text-center align-middle bg-[#23569d] w-6"></th>
-          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">目的地</th>
-          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">飛行時間</th>
-          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">高度 (FL)</th>
-          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">PAX</th>
-          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">Cargo</th>
-          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">起飛重量</th>
-          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">TFG</th>
-          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">TTG</th>
-          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">ENR</th>
-          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">Remaining</th>
-          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">TFU</th>
-          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">降落速度</th>
-          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">Landing V/S</th>
-          <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">操作</th>
-        </tr>
-      </thead>
-      <tbody id="flight-table-body" class="divide-y divide-slate-200 text-slate-700">
-        <!-- 動態渲染表格內容 -->
-      </tbody>
-    </table>
-  </div>
-</div>
+      <div class="overflow-x-auto overflow-y-auto max-h-[600px] w-full">
+        <table class="w-full text-center border-collapse text-xs">
+          <thead>
+            <tr style="background-color: #23569d;" class="sticky top-0 z-10 text-white border-b border-blue-900 whitespace-nowrap shadow-sm">
+              <!-- 加入日期搜尋功能與放大鏡按鈕 -->
+              <th class="p-3 font-semibold text-center align-middle bg-[#23569d] relative">
+                <div class="inline-flex items-center justify-center gap-1.5">
+                  <span>日期</span>
+                  <button 
+                    type="button" 
+                    onclick="openDatePicker()" 
+                    class="hover:text-blue-200 transition-colors focus:outline-none cursor-pointer" 
+                    title="搜尋日期"
+                  >
+                    <i data-lucide="search" class="w-3.5 h-3.5 inline-block"></i>
+                  </button>
+                  <button 
+                    id="reset-date-btn" 
+                    type="button" 
+                    onclick="resetDateFilter()" 
+                    class="hidden hover:text-red-300 transition-colors focus:outline-none cursor-pointer" 
+                    title="清除搜尋"
+                  >
+                    <i data-lucide="x-circle" class="w-3.5 h-3.5 inline-block"></i>
+                  </button>
+                </div>
+                <!-- 隱藏的日期輸入框 -->
+                <input 
+                  type="date" 
+                  id="date-search-input" 
+                  class="absolute opacity-0 pointer-events-none w-0 h-0 bottom-0 left-1/2" 
+                  onchange="filterByDate(this.value)"
+                />
+              </th>
+              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">機型</th>
+              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">出發地</th>
+              <th class="p-3 font-semibold text-center align-middle bg-[#23569d] w-6"></th>
+              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">目的地</th>
+              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">飛行時間</th>
+              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">高度 (FL)</th>
+              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">PAX</th>
+              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">Cargo</th>
+              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">起飛重量</th>
+              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">TFG</th>
+              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">TTG</th>
+              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">ENR</th>
+              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">Remaining</th>
+              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">TFU</th>
+              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">降落速度</th>
+              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">Landing V/S</th>
+              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">操作</th>
+            </tr>
+          </thead>
+          <tbody id="flight-table-body" class="divide-y divide-slate-200 text-slate-700">
+            <!-- 動態渲染表格內容 -->
+          </tbody>
+        </table>
+      </div>
       
       <!-- 空資料提示 -->
       <div id="empty-state" class="py-16 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
         <i data-lucide="plane-takeoff" class="w-10 h-10 opacity-50"></i>
-        <p class="text-sm">尚無飛行紀錄，點擊右下角按鈕新增紀錄</p>
+        <p class="text-sm" id="empty-msg">尚無飛行紀錄，點擊右下角按鈕新增紀錄</p>
       </div>
     </div>
   </main>
@@ -236,6 +260,7 @@
 
   <script>
     let flights = [];
+    let selectedFilterDate = '';
 
     const AIRPORT_MAP = {
       "TPE": "RCTP", "TSA": "RCSS", "KHH": "RCKH", "RMQ": "RCMQ", "TNN": "RCNN",
@@ -295,43 +320,67 @@
       return `${hrs}:${mins.toString().padStart(2, '0')}`;
     }
 
-    // 步驟 3-2：實時監聽 Firestore 資料變化並依日期由新到舊排序
-function initFirestoreListener() {
-  db.collection("flights")
-    .onSnapshot((snapshot) => {
-      flights = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      // 前端自動按日期降序排序（由最新到最舊）
-      // 若日期相同，則依據 Firestore 的新增時間戳 (createdAt) 倒序排列
-      flights.sort((a, b) => {
-        const dateA = new Date(a.flight_date || 0);
-        const dateB = new Date(b.flight_date || 0);
-
-        if (dateB - dateA !== 0) {
-          return dateB - dateA; // 日期不同，新的在前
+    // 日期搜尋控制器
+    function openDatePicker() {
+      const dateInput = document.getElementById('date-search-input');
+      if (dateInput) {
+        if ('showPicker' in HTMLInputElement.prototype) {
+          dateInput.showPicker();
+        } else {
+          dateInput.focus();
         }
+      }
+    }
 
-        // 同一天：比對建立了多少時間 (createdAt)
-        const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
-        const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
-        return timeB - timeA;
-      });
-
+    function filterByDate(date) {
+      selectedFilterDate = date;
+      const resetBtn = document.getElementById('reset-date-btn');
+      if (resetBtn) {
+        if (date) resetBtn.classList.remove('hidden');
+        else resetBtn.classList.add('hidden');
+      }
       renderFlights();
-    }, (error) => {
-      console.error("Firestore 監聽失敗:", error);
-    });
-}
+    }
+
+    function resetDateFilter() {
+      const dateInput = document.getElementById('date-search-input');
+      if (dateInput) dateInput.value = '';
+      filterByDate('');
+    }
+
+    // 實時監聽 Firestore 資料變化
+    function initFirestoreListener() {
+      db.collection("flights")
+        .onSnapshot((snapshot) => {
+          flights = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+
+          flights.sort((a, b) => {
+            const dateA = new Date(a.flight_date || 0);
+            const dateB = new Date(b.flight_date || 0);
+
+            if (dateB - dateA !== 0) {
+              return dateB - dateA;
+            }
+
+            const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+            const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+            return timeB - timeA;
+          });
+
+          renderFlights();
+        }, (error) => {
+          console.error("Firestore 監聽失敗:", error);
+        });
+    }
 
     function toggleForm() {
       const modal = document.getElementById('modal-overlay');
       modal.classList.toggle('hidden');
     }
 
-    // 步驟 3-2：新增紀錄至 Firebase Firestore
     async function handleSubmit(e) {
       e.preventDefault();
       const btn = e.target.querySelector('[type="submit"]');
@@ -383,9 +432,15 @@ function initFirestoreListener() {
     function renderFlights() {
       const tbody = document.getElementById('flight-table-body');
       const empty = document.getElementById('empty-state');
+      const emptyMsg = document.getElementById('empty-msg');
       tbody.innerHTML = '';
 
-      flights.forEach(f => {
+      // 篩選出的資料
+      const filteredFlights = selectedFilterDate 
+        ? flights.filter(f => f.flight_date === selectedFilterDate)
+        : flights;
+
+      filteredFlights.forEach(f => {
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-blue-50/50 transition-colors whitespace-nowrap text-center align-middle';
         
@@ -421,17 +476,25 @@ function initFirestoreListener() {
         tbody.appendChild(tr);
       });
 
+      // 時數統計永遠維持總時數（不隨單日搜尋變動）
       const totalA359 = flights.filter(f => f.aircraft_type === 'A359').reduce((s, f) => s + (Number(f.flight_hours) || 0), 0);
       const totalA35K = flights.filter(f => f.aircraft_type === 'A35K').reduce((s, f) => s + (Number(f.flight_hours) || 0), 0);
 
       document.getElementById('hours-a359').textContent = formatHoursToHM(totalA359);
       document.getElementById('hours-a35k').textContent = formatHoursToHM(totalA35K);
 
-      empty.style.display = flights.length ? 'none' : 'flex';
+      if (filteredFlights.length) {
+        empty.style.display = 'none';
+      } else {
+        empty.style.display = 'flex';
+        emptyMsg.textContent = selectedFilterDate 
+          ? `找不到 ${selectedFilterDate} 的飛行紀錄` 
+          : '尚無飛行紀錄，點擊右下角按鈕新增紀錄';
+      }
+      
       lucide.createIcons();
     }
 
-    // 步驟 3-2：自 Firebase Firestore 刪除紀錄
     async function deleteFlight(docId) {
       if (!docId) return;
       if (confirm('確定要刪除這筆飛行紀錄嗎？')) {
