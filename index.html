@@ -12,8 +12,6 @@
   <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- Arc.js (計算大圓航線弧度) -->
-  <script src="https://cdn.jsdelivr.net/npm/leaflet-geodesic"></script>
 
   <style>
     body { 
@@ -375,55 +373,93 @@
       routeLayerGroup = L.layerGroup().addTo(map);
     }
 
-    async function updateMapRoutes(flightList) {
-  if (!map || !routeLayerGroup) return;
-  routeLayerGroup.clearLayers();
+    // 計算兩點之間的大圓航線弧線點
+    function getGreatCirclePoints(start, end, nPoints = 60) {
+      const toRad = deg => (deg * Math.PI) / 180;
+      const toDeg = rad => (rad * 180) / Math.PI;
 
-  const bounds = [];
+      const lat1 = toRad(start[0]);
+      const lon1 = toRad(start[1]);
+      const lat2 = toRad(end[0]);
+      const lon2 = toRad(end[1]);
 
-  for (const f of flightList) {
-    const dep = f.departure_iata;
-    const dest = f.destination_iata;
+      const d = 2 * Math.asin(Math.sqrt(
+        Math.pow(Math.sin((lat1 - lat2) / 2), 2) +
+        Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin((lon1 - lon2) / 2), 2)
+      ));
 
-    if (!dep || !dest) continue;
+      if (d === 0) return [start, end];
 
-    try {
-      const start = await fetchAirportCoords(dep);
-      const end = await fetchAirportCoords(dest);
+      const points = [];
+      for (let i = 0; i <= nPoints; i++) {
+        const f = i / nPoints;
+        const A = Math.sin((1 - f) * d) / Math.sin(d);
+        const B = Math.sin(f * d) / Math.sin(d);
 
-      if (start && end) {
-        bounds.push(start, end);
+        const x = A * Math.cos(lat1) * Math.cos(lon1) + B * Math.cos(lat2) * Math.cos(lon2);
+        const y = A * Math.cos(lat1) * Math.sin(lon1) + B * Math.cos(lat2) * Math.sin(lon2);
+        const z = A * Math.sin(lat1) + B * Math.sin(lat2);
 
-        // 使用 L.geodesic 繪製真實大圓航線弧線
-        const geodesicLine = L.geodesic([[start, end]], {
-          weight: 2.5,
-          opacity: 0.7,
-          color: '#23569d',
-          steps: 50, // 弧線平滑度
-          dashArray: '6, 6'
-        }).addTo(routeLayerGroup);
+        const lat = Math.atan2(z, Math.sqrt(x * x + y * y));
+        const lon = Math.atan2(y, x);
 
-        // 繪製起終點 Marker
-        [{ coord: start, code: dep, type: 'dep' }, { coord: end, code: dest, type: 'dest' }].forEach(item => {
-          L.circleMarker(item.coord, {
-            radius: 4,
-            fillColor: item.type === 'dep' ? '#10b981' : '#ef4444',
-            color: '#ffffff',
-            weight: 1.5,
-            fillOpacity: 0.9
-          }).bindTooltip(item.code, { permanent: false, direction: 'top' })
-            .addTo(routeLayerGroup);
-        });
+        points.push([toDeg(lat), toDeg(lon)]);
       }
-    } catch (err) {
-      console.error(`繪製 ${dep} -> ${dest} 航線失敗:`, err);
+      return points;
     }
-  }
 
-  if (bounds.length > 0) {
-    map.fitBounds(bounds, { padding: [30, 30] });
-  }
-}
+    async function updateMapRoutes(flightList) {
+      if (!map || !routeLayerGroup) return;
+      routeLayerGroup.clearLayers();
+
+      const bounds = [];
+
+      for (const f of flightList) {
+        const dep = f.departure_iata;
+        const dest = f.destination_iata;
+
+        if (!dep || !dest) continue;
+
+        try {
+          const start = await fetchAirportCoords(dep);
+          const end = await fetchAirportCoords(dest);
+
+          if (start && end) {
+            bounds.push(start, end);
+
+            // 計算大圓航線弧度
+            const arcPoints = getGreatCirclePoints(start, end, 60);
+
+            // 繪製航線 Polyline
+            L.polyline(arcPoints, {
+              color: '#23569d',
+              weight: 2.5,
+              opacity: 0.75,
+              dashArray: '6, 6'
+            }).addTo(routeLayerGroup);
+
+            // 繪製起終點 Marker
+            [{ coord: start, code: dep, type: 'dep' }, { coord: end, code: dest, type: 'dest' }].forEach(item => {
+              L.circleMarker(item.coord, {
+                radius: 4,
+                fillColor: item.type === 'dep' ? '#10b981' : '#ef4444',
+                color: '#ffffff',
+                weight: 1.5,
+                fillOpacity: 0.9
+              }).bindTooltip(item.code, { permanent: false, direction: 'top' })
+                .addTo(routeLayerGroup);
+            });
+          }
+        } catch (err) {
+          console.error(`繪製 ${dep} -> ${dest} 航線失敗:`, err);
+        }
+      }
+
+      if (bounds.length > 0) {
+        map.fitBounds(bounds, { padding: [30, 30] });
+      }
+    }
+
     function autoFillICAO(type) {
       const iataInput = document.getElementById(`f-${type}-iata`);
       const icaoInput = document.getElementById(`f-${type}-icao`);
