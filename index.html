@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <!-- Arc.js (計算大圓航線弧度) -->
-  <script src="https://cdn.jsdelivr.net/npm/arc@0.9.0/arc.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet-geodesic"></script>
 
   <style>
     body { 
@@ -376,64 +376,54 @@
     }
 
     async function updateMapRoutes(flightList) {
-      if (!map || !routeLayerGroup) return;
-      routeLayerGroup.clearLayers();
+  if (!map || !routeLayerGroup) return;
+  routeLayerGroup.clearLayers();
 
-      const bounds = [];
+  const bounds = [];
 
-      for (const f of flightList) {
-        const dep = f.departure_iata;
-        const dest = f.destination_iata;
+  for (const f of flightList) {
+    const dep = f.departure_iata;
+    const dest = f.destination_iata;
 
-        if (!dep || !dest) continue;
+    if (!dep || !dest) continue;
 
-        try {
-          const start = await fetchAirportCoords(dep);
-          const end = await fetchAirportCoords(dest);
+    try {
+      const start = await fetchAirportCoords(dep);
+      const end = await fetchAirportCoords(dest);
 
-          if (start && end) {
-            bounds.push(start, end);
+      if (start && end) {
+        bounds.push(start, end);
 
-            let latLngs = [];
-            try {
-              const generator = new arc.GreatCircle(
-                { x: start[1], y: start[0] }, 
-                { x: end[1], y: end[0] }
-              );
-              const line = generator.Arc(100, { offset: 10 });
-              latLngs = line.geometries[0].coords.map(c => [c[1], c[0]]);
-            } catch (arcErr) {
-              latLngs = [start, end];
-            }
+        // 使用 L.geodesic 繪製真實大圓航線弧線
+        const geodesicLine = L.geodesic([[start, end]], {
+          weight: 2.5,
+          opacity: 0.7,
+          color: '#23569d',
+          steps: 50, // 弧線平滑度
+          dashArray: '6, 6'
+        }).addTo(routeLayerGroup);
 
-            L.polyline(latLngs, {
-              color: '#23569d',
-              weight: 2.5,
-              opacity: 0.7,
-              dashArray: '6, 6'
-            }).addTo(routeLayerGroup);
-
-            [ { coord: start, code: dep, type: 'dep' }, { coord: end, code: dest, type: 'dest' } ].forEach(item => {
-              L.circleMarker(item.coord, {
-                radius: 4,
-                fillColor: item.type === 'dep' ? '#10b981' : '#ef4444',
-                color: '#ffffff',
-                weight: 1.5,
-                fillOpacity: 0.9
-              }).bindTooltip(item.code, { permanent: false, direction: 'top' })
-                .addTo(routeLayerGroup);
-            });
-          }
-        } catch (err) {
-          console.error(`繪製 ${dep} -> ${dest} 航線失敗:`, err);
-        }
+        // 繪製起終點 Marker
+        [{ coord: start, code: dep, type: 'dep' }, { coord: end, code: dest, type: 'dest' }].forEach(item => {
+          L.circleMarker(item.coord, {
+            radius: 4,
+            fillColor: item.type === 'dep' ? '#10b981' : '#ef4444',
+            color: '#ffffff',
+            weight: 1.5,
+            fillOpacity: 0.9
+          }).bindTooltip(item.code, { permanent: false, direction: 'top' })
+            .addTo(routeLayerGroup);
+        });
       }
-
-      if (bounds.length > 0) {
-        map.fitBounds(bounds, { padding: [30, 30] });
-      }
+    } catch (err) {
+      console.error(`繪製 ${dep} -> ${dest} 航線失敗:`, err);
     }
+  }
 
+  if (bounds.length > 0) {
+    map.fitBounds(bounds, { padding: [30, 30] });
+  }
+}
     function autoFillICAO(type) {
       const iataInput = document.getElementById(`f-${type}-iata`);
       const icaoInput = document.getElementById(`f-${type}-icao`);
