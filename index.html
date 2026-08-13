@@ -140,7 +140,7 @@
   </main>
 
   <!-- 右下角懸浮按鈕 (FAB) -->
-  <button id="fab-add-btn" class="fixed bottom-6 right-6 text-white rounded-full p-4 shadow-xl flex items-center gap-2 transition-all duration-300 hover:scale-105 z-40 border border-blue-300" onclick="toggleForm()" style="background-color: #23569d;">
+  <button id="fab-add-btn" class="fixed bottom-6 right-6 text-white rounded-full p-4 shadow-xl flex items-center gap-2 transition-all duration-300 hover:scale-105 z-40 border border-blue-300" onclick="openCreateModal()" style="background-color: #23569d;">
     <i data-lucide="plus" class="w-6 h-6"></i>
     <span class="font-medium pr-1 text-sm hidden sm:inline">新增紀錄</span>
   </button>
@@ -149,8 +149,8 @@
   <div id="modal-overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
     <div class="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl relative my-8">
       <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
-        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-          <i data-lucide="file-plus" class="w-5 h-5" style="color: #23569d;"></i> 新增飛行紀錄
+        <h3 id="modal-title" class="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <i data-lucide="file-plus" class="w-5 h-5" style="color: #23569d;"></i> <span>新增飛行紀錄</span>
         </h3>
         <button class="text-slate-400 hover:text-slate-600" onclick="toggleForm()">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -158,6 +158,9 @@
       </div>
 
       <form id="flight-form" class="space-y-3" onsubmit="handleSubmit(event)">
+        <!-- 隱藏的 Document ID (用於判斷 Edit 或 Add) -->
+        <input type="hidden" id="f-doc-id" value="">
+
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="text-xs font-medium text-slate-600 block mb-1" for="f-date">日期</label>
@@ -252,7 +255,7 @@
         </div>
         <div class="pt-3 flex gap-3">
           <button type="button" onclick="toggleForm()" class="w-1/3 py-2 rounded-lg font-medium bg-slate-100 hover:bg-slate-200 text-slate-600">取消</button>
-          <button type="submit" class="w-2/3 py-2 rounded-lg font-medium transition-colors hover:opacity-90 text-white" style="background-color: #23569d;">儲存紀錄</button>
+          <button id="f-submit-btn" type="submit" class="w-2/3 py-2 rounded-lg font-medium transition-colors hover:opacity-90 text-white" style="background-color: #23569d;">儲存紀錄</button>
         </div>
       </form>
     </div>
@@ -381,10 +384,55 @@
       modal.classList.toggle('hidden');
     }
 
+    // 開啟「新增模式」Modal
+    function openCreateModal() {
+      document.getElementById('flight-form').reset();
+      document.getElementById('f-doc-id').value = '';
+      document.getElementById('modal-title').querySelector('span').textContent = '新增飛行紀錄';
+      document.getElementById('f-submit-btn').textContent = '儲存紀錄';
+      toggleForm();
+    }
+
+    // 開啟「編輯模式」Modal 並帶入歷史資料
+    function editFlight(docId) {
+      const target = flights.find(f => f.id === docId);
+      if (!target) return;
+
+      document.getElementById('f-doc-id').value = target.id;
+      document.getElementById('f-date').value = target.flight_date || '';
+      document.getElementById('f-aircraft').value = target.aircraft_type || 'A359';
+      document.getElementById('f-dep-iata').value = target.departure_iata || '';
+      document.getElementById('f-dep-icao').value = target.departure_icao || '';
+      document.getElementById('f-dest-iata').value = target.destination_iata || '';
+      document.getElementById('f-dest-icao').value = target.destination_icao || '';
+      document.getElementById('f-pax').value = target.passengers ?? '';
+      document.getElementById('f-cargo').value = target.cargo ?? '';
+      document.getElementById('f-tow').value = target.takeoff_weight ?? '';
+      document.getElementById('f-tfg').value = target.tfg || '';
+      document.getElementById('f-ttg').value = target.ttg || '';
+      document.getElementById('f-enr').value = target.enr || '';
+      document.getElementById('f-remaining').value = target.remaining || '';
+      document.getElementById('f-tfu').value = target.tfu || '';
+      document.getElementById('f-fl').value = target.flight_level || '';
+      document.getElementById('f-lspd').value = target.landing_speed ?? '';
+      document.getElementById('f-lvs').value = target.landing_vs ?? '';
+
+      // 計算小時與分鐘帶入表單
+      const totalMinutes = Math.round((Number(target.flight_hours) || 0) * 60);
+      document.getElementById('f-hours').value = Math.floor(totalMinutes / 60);
+      document.getElementById('f-minutes').value = totalMinutes % 60;
+
+      document.getElementById('modal-title').querySelector('span').textContent = '編輯飛行紀錄';
+      document.getElementById('f-submit-btn').textContent = '更新紀錄';
+      toggleForm();
+    }
+
     async function handleSubmit(e) {
       e.preventDefault();
       const btn = e.target.querySelector('[type="submit"]');
       btn.disabled = true;
+
+      const docId = document.getElementById('f-doc-id').value;
 
       const record = {
         flight_date: document.getElementById('f-date').value || new Date().toISOString().split('T')[0],
@@ -404,12 +452,18 @@
         flight_level: document.getElementById('f-fl').value,
         landing_speed: parseInt(document.getElementById('f-lspd').value) || 0,
         landing_vs: parseInt(document.getElementById('f-lvs').value) || 0,
-        flight_hours: (parseInt(document.getElementById('f-hours').value) || 0) + ((parseInt(document.getElementById('f-minutes').value) || 0) / 60),
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        flight_hours: (parseInt(document.getElementById('f-hours').value) || 0) + ((parseInt(document.getElementById('f-minutes').value) || 0) / 60)
       };
 
       try {
-        await db.collection("flights").add(record);
+        if (docId) {
+          // 編輯模式：更新現有 Document
+          await db.collection("flights").doc(docId).update(record);
+        } else {
+          // 新增模式：新增 Document
+          record.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+          await db.collection("flights").add(record);
+        }
         e.target.reset();
         toggleForm();
       } catch (err) {
@@ -468,9 +522,14 @@
           <td class="p-3 text-slate-600 text-center align-middle">${f.landing_speed ? f.landing_speed + ' kt' : '—'}</td>
           <td class="p-3 text-slate-600 text-center align-middle">${f.landing_vs ? f.landing_vs + ' fpm' : '—'}</td>
           <td class="p-3 text-center align-middle">
-            <button class="text-slate-400 hover:text-red-500 p-1 rounded hover:bg-slate-100 transition-all" title="刪除" onclick="deleteFlight('${f.id}')">
-              <i data-lucide="trash-2" class="w-4 h-4"></i>
-            </button>
+            <div class="inline-flex items-center gap-1">
+              <button class="text-slate-400 hover:text-blue-600 p-1 rounded hover:bg-slate-100 transition-all" title="編輯" onclick="editFlight('${f.id}')">
+                <i data-lucide="pencil" class="w-4 h-4"></i>
+              </button>
+              <button class="text-slate-400 hover:text-red-500 p-1 rounded hover:bg-slate-100 transition-all" title="刪除" onclick="deleteFlight('${f.id}')">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
           </td>
         `;
         tbody.appendChild(tr);
