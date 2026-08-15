@@ -28,7 +28,7 @@
     #map {
       width: 100%;
       aspect-ratio: 1 / 1;
-      max-height: 320px;
+      max-height: 480px;
       border-radius: 0.75rem;
       z-index: 10;
       background-color: #e5e7eb;
@@ -84,8 +84,8 @@
   <main class="max-w-[96vw] mx-auto px-4 py-4 w-full h-[calc(100vh-80px)] flex flex-col gap-4 overflow-hidden">
     <!-- 上方區域：地圖與右側操作按鈕區 -->
     <div class="flex flex-col md:flex-row gap-4 shrink-0 items-stretch">
-      <!-- 左側 1:1 正方形地圖容器 -->
-      <div class="bg-white rounded-xl border border-slate-200 p-2 shadow-sm w-full md:w-[320px] shrink-0 flex justify-center items-center">
+      <!-- 左側 1:1 正方形地圖容器 (尺寸等比例放大至 480px) -->
+      <div class="bg-white rounded-xl border border-slate-200 p-2 shadow-sm w-full md:w-[480px] shrink-0 flex justify-center items-center">
         <div id="map"></div>
       </div>
 
@@ -131,7 +131,7 @@
               </th>
               <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">機型</th>
               
-              <!-- 出發地表頭：增加搜尋與清除按鈕 -->
+              <!-- 出發地表頭：搜尋與清除按鈕 -->
               <th class="p-3 font-semibold text-center align-middle bg-[#23569d] relative">
                 <div class="inline-flex items-center justify-center gap-1.5">
                   <span>出發地</span>
@@ -146,7 +146,7 @@
 
               <th class="p-3 font-semibold text-center align-middle bg-[#23569d] w-6"></th>
 
-              <!-- 目的地表頭：增加搜尋與清除按鈕 -->
+              <!-- 目的地表頭：搜尋與清除按鈕 -->
               <th class="p-3 font-semibold text-center align-middle bg-[#23569d] relative">
                 <div class="inline-flex items-center justify-center gap-1.5">
                   <span>目的地</span>
@@ -574,7 +574,7 @@
       filterByDate('');
     }
 
-    // ===== 新增：出發地搜尋 =====
+    // ===== 出發地搜尋 =====
     function openDepSearchPrompt() {
       const input = prompt('請輸入出發地 IATA 或 ICAO 代碼（例：TPE 或 RCTP）：', selectedFilterDep);
       if (input !== null) {
@@ -596,7 +596,7 @@
       filterByDep('');
     }
 
-    // ===== 新增：目的地搜尋 =====
+    // ===== 目的地搜尋 =====
     function openDestSearchPrompt() {
       const input = prompt('請輸入目的地 IATA 或 ICAO 代碼（例：HND 或 RJTT）：', selectedFilterDest);
       if (input !== null) {
