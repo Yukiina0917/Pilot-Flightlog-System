@@ -130,7 +130,7 @@
               </th>
               <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">機型</th>
               
-              <!-- 出發地表頭：增加搜尋與清除按鈕 -->
+              <!-- 出發地表頭 -->
               <th class="p-3 font-semibold text-center align-middle bg-[#23569d] relative">
                 <div class="inline-flex items-center justify-center gap-1.5">
                   <span>出發地</span>
@@ -145,7 +145,7 @@
 
               <th class="p-3 font-semibold text-center align-middle bg-[#23569d] w-6"></th>
 
-              <!-- 目的地表頭：增加搜尋與清除按鈕 -->
+              <!-- 目的地表頭 -->
               <th class="p-3 font-semibold text-center align-middle bg-[#23569d] relative">
                 <div class="inline-flex items-center justify-center gap-1.5">
                   <span>目的地</span>
@@ -304,19 +304,26 @@
     let selectedFilterDest = '';
     let map, routeLayerGroup;
 
-    // 格式化數字為千分位樣式 (如: 123,456)
+    // 通用數字/文字千分位格式化函式
     function formatNumber(val) {
-      if (val === null || val === undefined || val === '') return '0';
+      if (val === null || val === undefined || val === '') return '—';
+      
+      // 若傳入純數字或可轉換之數值字串，進行轉換
       const num = Number(val);
-      return isNaN(num) ? val : num.toLocaleString('en-US');
+      if (!isNaN(num)) {
+        return num.toLocaleString('en-US');
+      }
+      
+      // 若為純字串且帶有數字（例如 "350"），嘗試以正規表示式取代連續數字
+      return String(val).replace(/\d+/g, (match) => Number(match).toLocaleString('en-US'));
     }
 
-    // 超大型全球機場座標庫 [緯度, 經度]
+    // 機場座標庫 [緯度, 經度]
     const AIRPORT_COORDS = {
       // ===== 台灣及港澳 =====
       "TPE": [25.0777, 121.2330], "TSA": [25.0697, 121.5525], "KHH": [22.5771, 120.3500], "RMQ": [24.2646, 120.6210], "HKG": [22.3080, 113.9185], "MFM": [22.1496, 113.5916],
 
-      // ===== 中國大陸（省會、直轄市及千萬級樞紐機場全收錄） =====
+      // ===== 中國大陸 =====
       "PEK": [40.0799, 116.6031], "PKX": [39.5098, 116.4105], "PVG": [31.1443, 121.8083], "SHA": [31.1979, 121.3363],
       "CAN": [23.3924, 113.2988], "SZX": [22.6393, 113.8107], "CTU": [30.5785, 103.9471], "TFU": [30.3086, 104.4442],
       "CKG": [29.7192, 106.6417], "HGH": [30.2295, 120.4344], "NKG": [31.7420, 118.8619], "WUH": [30.7838, 114.2081],
@@ -329,7 +336,7 @@
       "HET": [40.8522, 111.8242], "KHN": [28.8650, 115.9000], "HEF": [31.9892, 116.9786], "WNZ": [27.9122, 120.8519],
       "NGB": [29.8267, 121.4619], "SWA": [23.5511, 116.5053], "ZUH": [22.0089, 113.3761],
 
-      // ===== 北美洲（美國超大型樞紐 + 加拿大） =====
+      // ===== 北美洲 =====
       "LAX": [33.9416, -118.4085], "SFO": [37.6213, -122.3790], "JFK": [40.6413, -73.7781], "EWR": [40.6925, -74.1686],
       "ORD": [41.9742, -87.9073], "SEA": [47.4502, -122.3088], "DFW": [32.8998, -97.0403], "ATL": [33.6407, -84.4277],
       "MIA": [25.7959, -80.2870], "BOS": [42.3656, -71.0096], "IAD": [38.9531, -77.4565], "DCA": [38.8512, -77.0377],
@@ -339,7 +346,7 @@
       "ANC": [61.1744, -149.9963], "HNL": [21.3187, -157.9224], "YVR": [49.1967, -123.1815], "YYZ": [43.6777, -79.6248],
       "YUL": [45.4657, -73.7455], "YYC": [51.1139, -114.0203],
 
-      // ===== 歐洲（主要國家核心國際機場） =====
+      // ===== 歐洲 =====
       "LHR": [51.4700, -0.4543], "LGW": [51.1537, -0.1821], "MAN": [53.3537, -2.2750], "EDI": [55.9500, -3.3725],
       "CDG": [49.0097, 2.5479],  "ORY": [48.7262, 2.3652],   "NCE": [43.6653, 7.2150],   "LYS": [45.7256, 5.0811],
       "FRA": [50.0379, 8.5622],  "MUC": [48.3537, 11.7861],  "BER": [52.3667, 13.5033],  "DUS": [51.2895, 6.7668], "HAM": [53.6304, 9.9882],
@@ -367,27 +374,22 @@
 
     // IATA 對應 ICAO 自動補全對照表
     const AIRPORT_MAP = {
-      // 台灣及港澳
       "TPE": "RCTP", "TSA": "RCSS", "KHH": "RCKH", "RMQ": "RCMQ", "HKG": "VHHH", "MFM": "VMMC",
-      // 中國大陸
       "PEK": "ZBAA", "PKX": "ZBAD", "PVG": "ZSPD", "SHA": "ZSSS", "CAN": "ZGGG", "SZX": "ZGSZ", "CTU": "ZUUU", "TFU": "ZATL",
       "CKG": "ZUCK", "HGH": "ZSHC", "NKG": "ZSNJ", "WUH": "ZHHH", "CSX": "ZGHA", "CGO": "ZHCC", "XIY": "ZLXY", "TSN": "ZBTJ",
       "TAO": "ZSQD", "TNA": "ZSJN", "DLC": "ZYTL", "SHE": "ZYTX", "HRB": "ZYHB", "CGQ": "ZYCC", "FOC": "ZSFZ", "XMN": "ZSAM",
       "KMG": "ZPPP", "NNG": "ZGNN", "HAK": "ZJHK", "SYX": "ZJSY", "KWE": "ZUGU", "URC": "ZWWW", "LXA": "ZULS", "LHW": "ZLLL",
       "TYN": "ZBYN", "SJW": "ZBSJ", "INC": "ZLIC", "XNN": "ZLXN", "HET": "ZBHH", "KHN": "ZSCN", "HEF": "ZSOF", "WNZ": "ZSWZ",
       "NGB": "ZSNB", "SWA": "ZGOW", "ZUH": "ZGSD",
-      // 美國及加拿大
       "LAX": "KLAX", "SFO": "KSFO", "JFK": "KJFK", "EWR": "KEWR", "ORD": "KORD", "SEA": "KSEA", "DFW": "KDFW", "ATL": "KATL",
       "MIA": "KMIA", "BOS": "KBOS", "IAD": "KIAD", "DCA": "KDCA", "LAS": "KLAS", "PHX": "KPHX", "DEN": "KDEN", "IAH": "KIAH",
       "MSP": "KMSP", "DTW": "KDTW", "PHL": "KPHL", "CLT": "KCLT", "MCO": "KMCO", "SAN": "KSAN", "PDX": "KPDX", "SLC": "KSLC",
       "ANC": "PANC", "HNL": "PHNL", "YVR": "CYVR", "YYZ": "CYYZ", "YUL": "CYUL", "YYC": "CYYC",
-      // 歐洲
       "LHR": "EGLL", "LGW": "EGKK", "MAN": "EGCC", "EDI": "EGPH", "CDG": "LFPG", "ORY": "LFPO", "NCE": "LFMN", "LYS": "LFLL",
       "FRA": "EDDF", "MUC": "EDDM", "BER": "EDDB", "DUS": "EDDL", "HAM": "EDDH", "AMS": "EHAM", "BRU": "EBBR", "ZRH": "LSZH",
       "GVA": "LSGG", "VIE": "LOWW", "MAD": "LEMD", "BCN": "LEBL", "AGP": "LEMG", "FCO": "LIRF", "MXP": "LIMC", "VCE": "LIPZ",
       "ATH": "LGAV", "LIS": "LPPT", "OPO": "LPPR", "DUB": "EIDW", "CPH": "EKCH", "ARN": "ESSA", "OSL": "ENGM", "HEL": "EFHK",
       "WAW": "EPWA", "PRG": "LKPR", "BUD": "LHBP", "IST": "LTFM", "SAW": "LTFJ", "SVO": "UUEE", "DME": "UUDD", "TLS": "LFBO",
-      // 日韓及其他
       "HND": "RJTT", "NRT": "RJAA", "KIX": "RJBB", "NGO": "RJGG", "CTS": "RJCC", "FUK": "RJFF", "OKA": "ROAH", "ICN": "RKSI",
       "GMP": "RKSS", "PUS": "RKPK", "CJU": "RKPC", "SIN": "WSSS", "BKK": "VTBS", "DMK": "VTBD", "KUL": "WMKK", "MNL": "RPLL",
       "CGK": "WIII", "DPS": "WADD", "SGN": "VVTS", "HAN": "VVNB", "DXB": "OMDB", "DOH": "OTHH", "AUH": "OMAA", "SYD": "YSSY",
@@ -576,7 +578,7 @@
       filterByDate('');
     }
 
-    // ===== 新增：出發地搜尋 =====
+    // ===== 出發地搜尋 =====
     function openDepSearchPrompt() {
       const input = prompt('請輸入出發地 IATA 或 ICAO 代碼（例：TPE 或 RCTP）：', selectedFilterDep);
       if (input !== null) {
@@ -598,7 +600,7 @@
       filterByDep('');
     }
 
-    // ===== 新增：目的地搜尋 =====
+    // ===== 目的地搜尋 =====
     function openDestSearchPrompt() {
       const input = prompt('請輸入目的地 IATA 或 ICAO 代碼（例：HND 或 RJTT）：', selectedFilterDest);
       if (input !== null) {
@@ -743,7 +745,7 @@
       const emptyMsg = document.getElementById('empty-msg');
       tbody.innerHTML = '';
 
-      // 綜合多重條件過濾：日期、出發地、目的地（支援 IATA 或 ICAO 模糊比對）
+      // 多重過濾邏輯：日期、出發地、目的地
       const filteredFlights = flights.filter(f => {
         let matchDate = true;
         let matchDep = true;
@@ -772,6 +774,12 @@
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-blue-50/50 transition-colors whitespace-nowrap text-center align-middle';
         
+        // 格式化 FL 高度欄位
+        const formattedFL = f.flight_level ? 'FL ' + formatNumber(f.flight_level) : '—';
+        // 格式化降落速度與 Landing V/S 欄位
+        const formattedLspd = (f.landing_speed !== null && f.landing_speed !== undefined && f.landing_speed !== '') ? `${formatNumber(f.landing_speed)} kt` : '—';
+        const formattedLvs = (f.landing_vs !== null && f.landing_vs !== undefined && f.landing_vs !== '') ? `${formatNumber(f.landing_vs)} fpm` : '—';
+
         tr.innerHTML = `
           <td class="p-3 text-slate-800 font-medium text-center align-middle">${f.flight_date || '—'}</td>
           <td class="p-3 text-center align-middle"><span class="bg-blue-50 text-blue-600 border border-blue-200 px-2 py-0.5 rounded text-xs font-semibold">${f.aircraft_type || '—'}</span></td>
@@ -779,17 +787,17 @@
           <td class="p-3 text-slate-400 text-center px-1 align-middle"><i data-lucide="arrow-right" class="w-3.5 h-3.5 inline-block align-middle"></i></td>
           <td class="p-3 font-semibold text-slate-800 text-center align-middle">${formatAirport(f.destination_iata, f.destination_icao)}</td>
           <td class="p-3 font-bold text-center align-middle" style="color: #23569d;">${formatHoursToHM(f.flight_hours)}</td>
-          <td class="p-3 text-center align-middle">${f.flight_level ? 'FL' + f.flight_level : '—'}</td>
+          <td class="p-3 text-center align-middle">${formattedFL}</td>
           <td class="p-3 text-center align-middle">${formatNumber(f.passengers)}</td>
           <td class="p-3 text-center align-middle">${formatNumber(f.cargo)}</td>
           <td class="p-3 text-center align-middle">${formatNumber(f.takeoff_weight)}</td>
-          <td class="p-3 text-slate-600 text-center align-middle">${f.tfg || '—'}</td>
-          <td class="p-3 text-slate-600 text-center align-middle">${f.ttg || '—'}</td>
-          <td class="p-3 text-slate-600 text-center align-middle">${f.enr || '—'}</td>
-          <td class="p-3 text-slate-600 text-center align-middle">${f.remaining || '—'}</td>
-          <td class="p-3 text-slate-600 text-center align-middle">${f.tfu || '—'}</td>
-          <td class="p-3 text-slate-600 text-center align-middle">${f.landing_speed ? f.landing_speed + ' kt' : '—'}</td>
-          <td class="p-3 text-slate-600 text-center align-middle">${f.landing_vs ? f.landing_vs + ' fpm' : '—'}</td>
+          <td class="p-3 text-slate-600 text-center align-middle">${formatNumber(f.tfg)}</td>
+          <td class="p-3 text-slate-600 text-center align-middle">${formatNumber(f.ttg)}</td>
+          <td class="p-3 text-slate-600 text-center align-middle">${formatNumber(f.enr)}</td>
+          <td class="p-3 text-slate-600 text-center align-middle">${formatNumber(f.remaining)}</td>
+          <td class="p-3 text-slate-600 text-center align-middle">${formatNumber(f.tfu)}</td>
+          <td class="p-3 text-slate-600 text-center align-middle">${formattedLspd}</td>
+          <td class="p-3 text-slate-600 text-center align-middle">${formattedLvs}</td>
           <td class="p-3 text-center align-middle">
             <div class="inline-flex items-center gap-1">
               <button class="text-slate-400 hover:text-blue-600 p-1 rounded hover:bg-slate-100 transition-all" title="編輯" onclick="editFlight('${f.id}')"><i data-lucide="pencil" class="w-4 h-4"></i></button>
