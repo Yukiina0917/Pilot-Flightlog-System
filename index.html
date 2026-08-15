@@ -304,6 +304,13 @@
     let selectedFilterDest = '';
     let map, routeLayerGroup;
 
+    // 格式化數字為千分位樣式 (如: 123,456)
+    function formatNumber(val) {
+      if (val === null || val === undefined || val === '') return '0';
+      const num = Number(val);
+      return isNaN(num) ? val : num.toLocaleString('en-US');
+    }
+
     // 超大型全球機場座標庫 [緯度, 經度]
     const AIRPORT_COORDS = {
       // ===== 台灣及港澳 =====
@@ -773,9 +780,9 @@
           <td class="p-3 font-semibold text-slate-800 text-center align-middle">${formatAirport(f.destination_iata, f.destination_icao)}</td>
           <td class="p-3 font-bold text-center align-middle" style="color: #23569d;">${formatHoursToHM(f.flight_hours)}</td>
           <td class="p-3 text-center align-middle">${f.flight_level ? 'FL' + f.flight_level : '—'}</td>
-          <td class="p-3 text-center align-middle">${f.passengers || 0}</td>
-          <td class="p-3 text-center align-middle">${f.cargo || 0}</td>
-          <td class="p-3 text-center align-middle">${f.takeoff_weight || 0}</td>
+          <td class="p-3 text-center align-middle">${formatNumber(f.passengers)}</td>
+          <td class="p-3 text-center align-middle">${formatNumber(f.cargo)}</td>
+          <td class="p-3 text-center align-middle">${formatNumber(f.takeoff_weight)}</td>
           <td class="p-3 text-slate-600 text-center align-middle">${f.tfg || '—'}</td>
           <td class="p-3 text-slate-600 text-center align-middle">${f.ttg || '—'}</td>
           <td class="p-3 text-slate-600 text-center align-middle">${f.enr || '—'}</td>
