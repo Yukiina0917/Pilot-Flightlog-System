@@ -26,9 +26,8 @@
     ::-webkit-scrollbar-thumb:hover { background: #1a427a; }
     
     #map {
-      width: 100%;
-      aspect-ratio: 1 / 1;
-      max-height: 480px;
+      width: 95%;
+      height: 300px;
       border-radius: 0.75rem;
       z-index: 10;
       background-color: #e5e7eb;
@@ -83,14 +82,14 @@
 
   <main class="max-w-[96vw] mx-auto px-4 py-4 w-full h-[calc(100vh-80px)] flex flex-col gap-4 overflow-hidden">
     <!-- 上方區域：地圖與右側操作按鈕區 -->
-    <div class="flex flex-col md:flex-row gap-4 shrink-0 items-stretch">
-      <!-- 左側 1:1 正方形地圖容器 (尺寸等比例放大至 480px) -->
-      <div class="bg-white rounded-xl border border-slate-200 p-2 shadow-sm w-full md:w-[480px] shrink-0 flex justify-center items-center">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 shrink-0 items-center">
+      <!-- 左側 3 欄放置地圖 -->
+      <div class="md:col-span-3 bg-white rounded-xl border border-slate-200 p-2 shadow-sm">
         <div id="map"></div>
       </div>
 
-      <!-- 右側控制按鈕 -->
-      <div class="bg-slate-50 rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col gap-3 justify-center flex-1">
+      <!-- 右側 1 欄放置控制按鈕 -->
+      <div class="bg-slate-50 rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col gap-3 justify-center h-full">
         <button onclick="openCreateModal()" class="w-full text-white font-semibold py-2.5 px-4 rounded-lg shadow transition-all hover:opacity-90 flex items-center justify-center gap-2" style="background-color: #23569d;">
           <i data-lucide="plus-circle" class="w-5 h-5"></i>
           <span>新增飛行紀錄</span>
@@ -131,7 +130,7 @@
               </th>
               <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">機型</th>
               
-              <!-- 出發地表頭：搜尋與清除按鈕 -->
+              <!-- 出發地表頭：增加搜尋與清除按鈕 -->
               <th class="p-3 font-semibold text-center align-middle bg-[#23569d] relative">
                 <div class="inline-flex items-center justify-center gap-1.5">
                   <span>出發地</span>
@@ -146,7 +145,7 @@
 
               <th class="p-3 font-semibold text-center align-middle bg-[#23569d] w-6"></th>
 
-              <!-- 目的地表頭：搜尋與清除按鈕 -->
+              <!-- 目的地表頭：增加搜尋與清除按鈕 -->
               <th class="p-3 font-semibold text-center align-middle bg-[#23569d] relative">
                 <div class="inline-flex items-center justify-center gap-1.5">
                   <span>目的地</span>
@@ -426,10 +425,6 @@
       }).addTo(map);
 
       routeLayerGroup = L.layerGroup().addTo(map);
-
-      setTimeout(() => {
-        map.invalidateSize();
-      }, 100);
     }
 
     function getSplitGreatCircleArcs(start, end, nPoints = 80) {
@@ -574,7 +569,7 @@
       filterByDate('');
     }
 
-    // ===== 出發地搜尋 =====
+    // ===== 新增：出發地搜尋 =====
     function openDepSearchPrompt() {
       const input = prompt('請輸入出發地 IATA 或 ICAO 代碼（例：TPE 或 RCTP）：', selectedFilterDep);
       if (input !== null) {
@@ -596,7 +591,7 @@
       filterByDep('');
     }
 
-    // ===== 目的地搜尋 =====
+    // ===== 新增：目的地搜尋 =====
     function openDestSearchPrompt() {
       const input = prompt('請輸入目的地 IATA 或 ICAO 代碼（例：HND 或 RJTT）：', selectedFilterDest);
       if (input !== null) {
