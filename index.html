@@ -81,7 +81,7 @@
         </button>
         <div class="relative w-full overflow-hidden text-xs font-medium">
           <div class="animate-marquee" id="marquee-text-display">
-            📢 歡迎使用 FlightLog 系統！請注意最新航班時間更新，降落後請及時登記飛行數據與紀錄。
+            載入最新公告中...
           </div>
         </div>
       </div>
@@ -430,7 +430,7 @@
 
     function openAnnouncementModal() {
       const currentText = document.getElementById('marquee-text-display').innerText.trim();
-      document.getElementById('announcement-input').value = currentText;
+      document.getElementById('announcement-input').value = currentText.includes("載入中") ? "" : currentText;
       document.getElementById('announcement-modal').classList.remove('hidden');
     }
 
@@ -438,11 +438,19 @@
       document.getElementById('announcement-modal').classList.add('hidden');
     }
 
-    function saveAnnouncement() {
+    async function saveAnnouncement() {
       const newText = document.getElementById('announcement-input').value.trim();
       if (newText) {
-        document.getElementById('marquee-text-display').innerText = newText;
-        closeAnnouncementModal();
+        try {
+          // 將公告儲存至 Firebase Firestore (system_settings/announcement)
+          await db.collection("system_settings").doc("announcement").set({
+            content: newText,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          closeAnnouncementModal();
+        } catch (error) {
+          alert('公告儲存至 Firebase 失敗：' + error.message);
+        }
       } else {
         alert('公告內容不可為空！');
       }
@@ -672,6 +680,19 @@
     }
 
     function initFirestoreListener() {
+      // 1. 監聽跑馬燈公告 (持久化並保持同步)
+      db.collection("system_settings").doc("announcement")
+        .onSnapshot((doc) => {
+          if (doc.exists && doc.data().content) {
+            document.getElementById('marquee-text-display').innerText = doc.data().content;
+          } else {
+            document.getElementById('marquee-text-display').innerText = "📢 歡迎使用 FlightLog 系統！請注意最新航班時間更新，降落後請及時登記飛行數據與紀錄。";
+          }
+        }, (error) => {
+          console.error("跑馬燈公告載入失敗:", error);
+        });
+
+      // 2. 監聽飛行紀錄資料
       db.collection("flights")
         .onSnapshot(async (snapshot) => {
           flights = snapshot.docs.map(doc => ({
