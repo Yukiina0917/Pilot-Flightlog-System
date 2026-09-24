@@ -530,10 +530,11 @@
       });
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap &copy; CARTO',
-        maxZoom: 18,
-        noWrap: true
-      }).addTo(map);
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  maxZoom: 19,
+  noWrap: true,
+  detectRetina: true // 👈 加這行！讓 Leaflet 自動啟用高清 (@2x) 圖塊
+}).addTo(map);
 
       routeLayerGroup = L.layerGroup().addTo(map);
     }
