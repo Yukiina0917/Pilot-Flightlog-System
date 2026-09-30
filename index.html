@@ -67,9 +67,9 @@
 </head>
 
 <body class="flex flex-col h-screen overflow-hidden">
-  <!-- 區塊 1：Header 頂部欄位（保持原樣） -->
+  <!-- 區塊 1：Header 頂部欄位 -->
   <header class="sticky top-0 z-30 bg-white text-slate-800 border-b border-slate-200 px-6 py-3 shrink-0 shadow-sm h-[80px]">
-    <div class="max-w-[96vw] mx-auto flex items-center justify-between gap-4">
+    <div class="max-w-[98vw] mx-auto flex items-center justify-between gap-4">
       <a href="#" class="flex items-center gap-3 hover:opacity-80 transition-opacity shrink-0">
         <img src="https://yukiina0917.sirv.com/Images/3335b2eb03000002ebcc.png" alt="Logo" class="h-14 w-auto object-contain">
         <span class="text-xl font-bold tracking-wide text-slate-900 hidden lg:inline">FlightLog System</span>
@@ -109,126 +109,123 @@
     </div>
   </header>
 
-  <!-- 主要內容區：包含區塊 2、區塊 3 與下方表格 -->
-  <main class="max-w-[96vw] mx-auto px-4 py-4 w-full h-[calc(100vh-80px)] flex flex-col gap-4 overflow-hidden">
-    
-    <!-- 上方雙區塊容器 (區塊 2 + 區塊 3) -->
-    <div class="grid grid-cols-1 md:grid-cols-12 gap-4 shrink-0 max-h-[320px]">
+  <!-- 主要內容區：左右拆分版面 -->
+  <main class="max-w-[98vw] mx-auto px-4 py-4 w-full h-[calc(100vh-80px)] overflow-hidden">
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-4 h-full">
       
-      <!-- 區塊 2：正方形地圖區 -->
-      <div class="md:col-span-5 lg:col-span-4 bg-white rounded-xl border border-slate-200 p-2 shadow-sm flex justify-center items-center overflow-hidden aspect-square max-h-[320px] mx-auto w-full">
-        <div id="map"></div>
+      <!-- 【左側欄】：地圖區 -->
+      <div class="md:col-span-4 lg:col-span-3 bg-white rounded-xl border border-slate-200 p-2 shadow-sm flex flex-col h-full overflow-hidden">
+        <div id="map" class="w-full h-full rounded-lg"></div>
       </div>
 
-      <!-- 區塊 3：操作控制卡片區（建議將按鈕擺放於此） -->
-      <div class="md:col-span-7 lg:col-span-8 bg-white rounded-xl border border-slate-200 p-6 shadow-sm flex flex-col justify-between h-full">
-        <div>
-          <h2 class="text-base font-bold text-slate-800 mb-1 flex items-center gap-2">
-            <i data-lucide="sliders" class="w-5 h-5" style="color: #23569d;"></i>
-            <span>控制面板 / 系統操作</span>
-          </h2>
-          <p class="text-xs text-slate-500">在此快速新增飛行日誌紀錄或進行 CSV 檔案數據備份與匯入。</p>
+      <!-- 【右側欄】：數據與按鈕區 (上下排列) -->
+      <div class="md:col-span-8 lg:col-span-9 flex flex-col gap-4 h-full overflow-hidden">
+        
+        <!-- 右上：控制面板 / 按鈕區 -->
+        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm shrink-0 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-800 mb-1 flex items-center gap-2">
+              <i data-lucide="sliders" class="w-5 h-5" style="color: #23569d;"></i>
+              <span>控制面板 / 系統操作</span>
+            </h2>
+            <p class="text-xs text-slate-500">在此快速新增飛行日誌紀錄或進行 CSV 檔案數據備份與匯入。</p>
+          </div>
+
+          <div class="flex items-center gap-3 w-full sm:w-auto">
+            <!-- 新增飛行紀錄按鈕 -->
+            <button onclick="openCreateModal()" class="flex-1 sm:flex-none text-white font-semibold py-2.5 px-5 rounded-xl shadow-md transition-all hover:opacity-90 flex items-center justify-center gap-2 text-sm whitespace-nowrap" style="background-color: #23569d;">
+              <i data-lucide="plus-circle" class="w-4 h-4"></i>
+              <span>新增飛行紀錄</span>
+            </button>
+
+            <!-- 匯出 CSV 按鈕 -->
+            <button onclick="exportToCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-colors whitespace-nowrap">
+              <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+              <span>匯出 CSV</span>
+            </button>
+
+            <!-- 匯入 CSV 按鈕 -->
+            <label class="bg-slate-700 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap">
+              <i data-lucide="upload" class="w-4 h-4"></i>
+              <span>匯入 CSV</span>
+              <input type="file" id="csv-file-input" accept=".csv" class="hidden" onchange="importFromCSV(event)">
+            </label>
+          </div>
         </div>
 
-        <div class="flex flex-col sm:flex-row items-center gap-3 my-auto pt-2">
-          <!-- 新增飛行紀錄按鈕 -->
-          <button onclick="openCreateModal()" class="w-full sm:flex-1 text-white font-semibold py-3 px-5 rounded-xl shadow-md transition-all hover:opacity-90 flex items-center justify-center gap-2 text-sm" style="background-color: #23569d;">
-            <i data-lucide="plus-circle" class="w-5 h-5"></i>
-            <span>新增飛行紀錄</span>
-          </button>
+        <!-- 右下：數據表格區 (支援左右橫向滾輪) -->
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-md flex-1 flex flex-col min-h-0">
+          <div class="overflow-x-auto overflow-y-auto h-full w-full flex-1">
+            <table class="w-full text-center border-collapse text-xs">
+              <thead>
+                <tr style="background-color: #23569d;" class="sticky top-0 z-10 text-white border-b border-blue-900 whitespace-nowrap shadow-sm">
+                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d] relative">
+                    <div class="inline-flex items-center justify-center gap-1.5">
+                      <span>日期</span>
+                      <button type="button" onclick="openDatePicker()" class="hover:text-blue-200 transition-colors focus:outline-none cursor-pointer" title="搜尋日期">
+                        <i data-lucide="search" class="w-3.5 h-3.5 inline-block"></i>
+                      </button>
+                      <button id="reset-date-btn" type="button" onclick="resetDateFilter()" class="hidden hover:text-red-300 transition-colors focus:outline-none cursor-pointer" title="清除搜尋">
+                        <i data-lucide="x-circle" class="w-3.5 h-3.5 inline-block"></i>
+                      </button>
+                    </div>
+                    <input type="date" id="date-search-input" class="absolute opacity-0 pointer-events-none w-0 h-0 bottom-0 left-1/2" onchange="filterByDate(this.value)"/>
+                  </th>
+                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">機型</th>
+                  
+                  <!-- 出發地表頭 -->
+                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d] relative">
+                    <div class="inline-flex items-center justify-center gap-1.5">
+                      <span>出發地</span>
+                      <button type="button" onclick="openDepSearchPrompt()" class="hover:text-blue-200 transition-colors focus:outline-none cursor-pointer" title="搜尋出發地">
+                        <i data-lucide="search" class="w-3.5 h-3.5 inline-block"></i>
+                      </button>
+                      <button id="reset-dep-btn" type="button" onclick="resetDepFilter()" class="hidden hover:text-red-300 transition-colors focus:outline-none cursor-pointer" title="清除搜尋">
+                        <i data-lucide="x-circle" class="w-3.5 h-3.5 inline-block"></i>
+                      </button>
+                    </div>
+                  </th>
 
-          <!-- 匯出 CSV 按鈕 -->
-          <button onclick="exportToCSV()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-colors">
-            <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
-            <span>匯出 CSV</span>
-          </button>
+                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d] w-6"></th>
 
-          <!-- 匯入 CSV 按鈕 -->
-          <label class="w-full sm:w-auto bg-slate-700 hover:bg-slate-800 text-white font-semibold py-3 px-4 rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer">
-            <i data-lucide="upload" class="w-4 h-4"></i>
-            <span>匯入 CSV</span>
-            <input type="file" id="csv-file-input" accept=".csv" class="hidden" onchange="importFromCSV(event)">
-          </label>
+                  <!-- 目的地表頭 -->
+                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d] relative">
+                    <div class="inline-flex items-center justify-center gap-1.5">
+                      <span>目的地</span>
+                      <button type="button" onclick="openDestSearchPrompt()" class="hover:text-blue-200 transition-colors focus:outline-none cursor-pointer" title="搜尋目的地">
+                        <i data-lucide="search" class="w-3.5 h-3.5 inline-block"></i>
+                      </button>
+                      <button id="reset-dest-btn" type="button" onclick="resetDestFilter()" class="hidden hover:text-red-300 transition-colors focus:outline-none cursor-pointer" title="清除搜尋">
+                        <i data-lucide="x-circle" class="w-3.5 h-3.5 inline-block"></i>
+                      </button>
+                    </div>
+                  </th>
+
+                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">飛行時間</th>
+                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">高度 (FL)</th>
+                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">PAX</th>
+                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">Cargo</th>
+                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">起飛重量</th>
+                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">TFG</th>
+                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">TTG</th>
+                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">ENR</th>
+                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">Remaining</th>
+                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">TFU</th>
+                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">降落速度</th>
+                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">Landing V/S</th>
+                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">操作</th>
+                </tr>
+              </thead>
+              <tbody id="flight-table-body" class="divide-y divide-slate-200 text-slate-700"></tbody>
+            </table>
+          </div>
+          
+          <div id="empty-state" class="py-12 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
+            <i data-lucide="plane-takeoff" class="w-10 h-10 opacity-50"></i>
+            <p class="text-sm" id="empty-msg">尚無飛行紀錄，點擊按鈕新增紀錄</p>
+          </div>
         </div>
 
-        <div class="text-[11px] text-slate-400 border-t border-slate-100 pt-2 flex justify-between items-center">
-          <span>Status: System Operational</span>
-          <span>Google Firestore Connected</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- 區塊 3 下方：數據表格（支援橫向滾輪） -->
-    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-md flex-1 flex flex-col min-h-0">
-      <!-- 左右移動滾輪（overflow-x-auto） -->
-      <div class="overflow-x-auto overflow-y-auto h-full w-full flex-1">
-        <table class="w-full text-center border-collapse text-xs">
-          <thead>
-            <tr style="background-color: #23569d;" class="sticky top-0 z-10 text-white border-b border-blue-900 whitespace-nowrap shadow-sm">
-              <th class="p-3 font-semibold text-center align-middle bg-[#23569d] relative">
-                <div class="inline-flex items-center justify-center gap-1.5">
-                  <span>日期</span>
-                  <button type="button" onclick="openDatePicker()" class="hover:text-blue-200 transition-colors focus:outline-none cursor-pointer" title="搜尋日期">
-                    <i data-lucide="search" class="w-3.5 h-3.5 inline-block"></i>
-                  </button>
-                  <button id="reset-date-btn" type="button" onclick="resetDateFilter()" class="hidden hover:text-red-300 transition-colors focus:outline-none cursor-pointer" title="清除搜尋">
-                    <i data-lucide="x-circle" class="w-3.5 h-3.5 inline-block"></i>
-                  </button>
-                </div>
-                <input type="date" id="date-search-input" class="absolute opacity-0 pointer-events-none w-0 h-0 bottom-0 left-1/2" onchange="filterByDate(this.value)"/>
-              </th>
-              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">機型</th>
-              
-              <!-- 出發地表頭 -->
-              <th class="p-3 font-semibold text-center align-middle bg-[#23569d] relative">
-                <div class="inline-flex items-center justify-center gap-1.5">
-                  <span>出發地</span>
-                  <button type="button" onclick="openDepSearchPrompt()" class="hover:text-blue-200 transition-colors focus:outline-none cursor-pointer" title="搜尋出發地">
-                    <i data-lucide="search" class="w-3.5 h-3.5 inline-block"></i>
-                  </button>
-                  <button id="reset-dep-btn" type="button" onclick="resetDepFilter()" class="hidden hover:text-red-300 transition-colors focus:outline-none cursor-pointer" title="清除搜尋">
-                    <i data-lucide="x-circle" class="w-3.5 h-3.5 inline-block"></i>
-                  </button>
-                </div>
-              </th>
-
-              <th class="p-3 font-semibold text-center align-middle bg-[#23569d] w-6"></th>
-
-              <!-- 目的地表頭 -->
-              <th class="p-3 font-semibold text-center align-middle bg-[#23569d] relative">
-                <div class="inline-flex items-center justify-center gap-1.5">
-                  <span>目的地</span>
-                  <button type="button" onclick="openDestSearchPrompt()" class="hover:text-blue-200 transition-colors focus:outline-none cursor-pointer" title="搜尋目的地">
-                    <i data-lucide="search" class="w-3.5 h-3.5 inline-block"></i>
-                  </button>
-                  <button id="reset-dest-btn" type="button" onclick="resetDestFilter()" class="hidden hover:text-red-300 transition-colors focus:outline-none cursor-pointer" title="清除搜尋">
-                    <i data-lucide="x-circle" class="w-3.5 h-3.5 inline-block"></i>
-                  </button>
-                </div>
-              </th>
-
-              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">飛行時間</th>
-              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">高度 (FL)</th>
-              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">PAX</th>
-              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">Cargo</th>
-              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">起飛重量</th>
-              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">TFG</th>
-              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">TTG</th>
-              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">ENR</th>
-              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">Remaining</th>
-              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">TFU</th>
-              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">降落速度</th>
-              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">Landing V/S</th>
-              <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">操作</th>
-            </tr>
-          </thead>
-          <tbody id="flight-table-body" class="divide-y divide-slate-200 text-slate-700"></tbody>
-        </table>
-      </div>
-      
-      <div id="empty-state" class="py-12 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
-        <i data-lucide="plane-takeoff" class="w-10 h-10 opacity-50"></i>
-        <p class="text-sm" id="empty-msg">尚無飛行紀錄，點擊按鈕新增紀錄</p>
       </div>
     </div>
   </main>
@@ -390,7 +387,7 @@
       return String(val).replace(/\d+/g, (match) => Number(match).toLocaleString('en-US'));
     }
 
-    // 機場座標庫 [緯度, 經度]
+    // 機場座標庫
     const AIRPORT_COORDS = {
       "TPE": [25.0777, 121.2330], "TSA": [25.0697, 121.5525], "KHH": [22.5771, 120.3500], "RMQ": [24.2646, 120.6210], "HKG": [22.3080, 113.9185], "MFM": [22.1496, 113.5916],
       "PEK": [40.0799, 116.6031], "PKX": [39.5098, 116.4105], "PVG": [31.1443, 121.8083], "SHA": [31.1979, 121.3363],
@@ -433,7 +430,6 @@
       "JNB": [-26.1367, 28.2411], "CAI": [30.1219, 31.4056], "BOG": [4.7016, -74.1469], "PER": [-31.9403, 115.9669]
     };
 
-    // IATA 對應 ICAO 自動補全對照表
     const AIRPORT_MAP = {
       "TPE": "RCTP", "TSA": "RCSS", "KHH": "RCKH", "RMQ": "RCMQ", "HKG": "VHHH", "MFM": "VMMC",
       "PEK": "ZBAA", "PKX": "ZBAD", "PVG": "ZSPD", "SHA": "ZSSS", "CAN": "ZGGG", "SZX": "ZGSZ", "CTU": "ZUUU", "TFU": "ZATL",
@@ -457,7 +453,7 @@
       "MEL": "YMML", "BNE": "YBBN", "AKL": "NZAA", "GRU": "SBGR", "GIG": "SBGL", "EZE": "SAEZ", "SCL": "SCEL", "JNB": "FAOR", "CAI": "HECA"
     };
 
-    // ===== 公告跑馬燈功能邏輯 =====
+    // ===== 公告跑馬燈功能 =====
     function initAnnouncementListener() {
       db.collection("announcements").doc("latest")
         .onSnapshot((doc) => {
@@ -534,15 +530,18 @@
       });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        attribution: '&copy; OpenStreetMap',
         maxZoom: 19,
         noWrap: true
       }).addTo(map);
 
       routeLayerGroup = L.layerGroup().addTo(map);
 
-      // 強制重新計算地圖渲染尺寸（解決正方形與 Grid 切換時地圖未填滿問題）
-      setTimeout(() => { map.invalidateSize(); }, 300);
+      // 自動監聽動態尺寸調整，防止白邊與渲染問題
+      const resizeObserver = new ResizeObserver(() => {
+        if (map) map.invalidateSize();
+      });
+      resizeObserver.observe(document.getElementById('map'));
     }
 
     function getSplitGreatCircleArcs(start, end, nPoints = 80) {
@@ -662,7 +661,7 @@
       return `${hrs}:${mins.toString().padStart(2, '0')}`;
     }
 
-    // ===== 日期搜尋 =====
+    // ===== 搜尋對應功能 =====
     function openDatePicker() {
       const dateInput = document.getElementById('date-search-input');
       if (dateInput) {
@@ -687,12 +686,9 @@
       filterByDate('');
     }
 
-    // ===== 出發地搜尋 =====
     function openDepSearchPrompt() {
       const input = prompt('請輸入出發地 IATA 或 ICAO 代碼（例：TPE 或 RCTP）：', selectedFilterDep);
-      if (input !== null) {
-        filterByDep(input.trim());
-      }
+      if (input !== null) filterByDep(input.trim());
     }
 
     function filterByDep(val) {
@@ -705,16 +701,11 @@
       renderFlights();
     }
 
-    function resetDepFilter() {
-      filterByDep('');
-    }
+    function resetDepFilter() { filterByDep(''); }
 
-    // ===== 目的地搜尋 =====
     function openDestSearchPrompt() {
       const input = prompt('請輸入目的地 IATA 或 ICAO 代碼（例：HND 或 RJTT）：', selectedFilterDest);
-      if (input !== null) {
-        filterByDest(input.trim());
-      }
+      if (input !== null) filterByDest(input.trim());
     }
 
     function filterByDest(val) {
@@ -727,9 +718,7 @@
       renderFlights();
     }
 
-    function resetDestFilter() {
-      filterByDest('');
-    }
+    function resetDestFilter() { filterByDest(''); }
 
     function initFirestoreListener() {
       db.collection("flights")
@@ -946,7 +935,7 @@
       }
     }
 
-    // ===== CSV 匯出 / 匯入 功能 =====
+    // ===== CSV 匯出 / 匯入 =====
     function exportToCSV() {
       if (!flights || flights.length === 0) {
         alert('目前無資料可供匯出');
@@ -1039,7 +1028,6 @@
       lucide.createIcons();
     };
 
-    // 視窗大小改變時，觸發地圖適應
     window.onresize = () => {
       if (map) map.invalidateSize();
     };
