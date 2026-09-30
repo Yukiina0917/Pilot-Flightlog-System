@@ -1,1036 +1,240 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>China Airlines FlightLog System</title>
-  <link rel="icon" type="image/x-icon" href="https://yukiina0917.sirv.com/Images/CAL-LOGO-64x64.png">
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flight Log System</title>
   
-  <!-- Leaflet CSS & JS -->
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
+  
   <style>
-    body { 
-      font-family: 'DM Sans', sans-serif; 
-      background-color: #f8fafc; 
-      height: 100vh; 
-      overflow: hidden; 
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
-    ::-webkit-scrollbar { height: 8px; width: 8px; }
-    ::-webkit-scrollbar-track { background: #f1f5f9; }
-    ::-webkit-scrollbar-thumb { background: #23569d; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #1a427a; }
-    
+
+    body {
+      background-color: #f8fafc;
+      padding: 24px;
+    }
+
+    /* 主要外層容器：左右 Flex 佈局 */
+    .dashboard-layout {
+      display: flex;
+      gap: 20px;
+      width: 100%;
+      align-items: stretch;
+    }
+
+    /* 左側地圖區域：設為正方形 */
+    .map-section {
+      height: 600px;              /* 設定高度 */
+      aspect-ratio: 1 / 1;        /* 強制寬度 = 高度 (正方形) */
+      flex-shrink: 0;             /* 防止被右側表格擠壓 */
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      background-color: #ffffff;
+    }
+
     #map {
       width: 100%;
       height: 100%;
-      border-radius: 0.75rem;
-      z-index: 10;
-      background-color: #e5e7eb;
     }
 
-    /* 跑馬燈動畫 */ 
-    @keyframes marquee {
-      0% { transform: translateX(100%); }
-      100% { transform: translateX(-100%); }
+    /* 右側主要內容區域 */
+    .content-section {
+      flex: 1;
+      min-width: 0;               /* 允許內容自適應縮放 */
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
-    .animate-marquee {
-      display: inline-block;
+
+    /* 上方控制面板 */
+    .control-panel {
+      background: #ffffff;
+      padding: 16px 20px;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .panel-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #1e293b;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      color: white;
+    }
+
+    .btn-primary { background-color: #1d4ed8; }
+    .btn-success { background-color: #10b981; }
+    .btn-dark { background-color: #334155; }
+
+    /* 下方表格容器 */
+    .table-container {
+      background: #ffffff;
+      border-radius: 12px;
+      overflow-x: auto;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      flex: 1;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    thead {
+      background-color: #1e40af;
+      color: white;
+    }
+
+    th, td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #e2e8f0;
       white-space: nowrap;
-      animation: marquee 25s linear infinite;
     }
-    .animate-marquee:hover {
-      animation-play-state: paused;
+
+    tbody tr:hover {
+      background-color: #f1f5f9;
+    }
+
+    .badge-aircraft {
+      background-color: #e0f2fe;
+      color: #0369a1;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: bold;
     }
   </style>
-
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyDn_AXc3QH3JPLyy5ExxODRO84Q_8lrbNo",
-      authDomain: "pilot-flightlog-system.firebaseapp.com",
-      projectId: "pilot-flightlog-system",
-      storageBucket: "pilot-flightlog-system.firebasestorage.app",
-      messagingSenderId: "760562947024",
-      appId: "G-45CG1GNVL9"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-  </script>
 </head>
+<body>
 
-<body class="flex flex-col h-screen overflow-hidden">
-  <!-- 區塊 1：Header 頂部欄位 -->
-  <header class="sticky top-0 z-30 bg-white text-slate-800 border-b border-slate-200 px-6 py-3 shrink-0 shadow-sm h-[80px]">
-    <div class="max-w-[98vw] mx-auto flex items-center justify-between gap-4">
-      <a href="#" class="flex items-center gap-3 hover:opacity-80 transition-opacity shrink-0">
-        <img src="https://yukiina0917.sirv.com/Images/3335b2eb03000002ebcc.png" alt="Logo" class="h-14 w-auto object-contain">
-        <span class="text-xl font-bold tracking-wide text-slate-900 hidden lg:inline">FlightLog System</span>
-      </a>
-
-      <!-- 跑馬燈區域 -->
-      <div class="flex-1 max-w-xl mx-2 rounded-full px-3 py-1.5 border flex items-center gap-2 overflow-hidden shadow-inner" style="background-color: #D464751A; border-color: #D4647540;">
-        <button type="button" onclick="openAnnouncementModal()" class="flex items-center gap-1 shrink-0 font-semibold text-xs px-2.5 py-0.5 rounded-full text-white shadow-sm transition-all cursor-pointer hover:opacity-90 active:scale-95" style="background-color: #D46475;" title="點擊編輯公告">
-          <i data-lucide="bell" class="w-3.5 h-3.5"></i>
-          <span>公告</span>
-        </button>
-        
-        <div class="overflow-hidden flex-1 relative flex items-center h-5">
-          <div id="marquee-text" class="animate-marquee text-xs font-medium" style="color: #8C2F3D;">
-            載入公告中...
-          </div>
-        </div>
-      </div>
-
-      <div class="flex items-center gap-6 shrink-0">
-        <div class="text-right border-r border-slate-200 pr-6 hidden sm:block">
-          <p class="text-sm font-bold text-slate-800 tracking-wide">Pilot Capt. Yukiina</p>
-          <p class="text-xs font-medium text-slate-500 tracking-normal">Type Rating A350 XWB Series</p>
-        </div>
-
-        <div class="flex items-center gap-3 text-sm font-semibold">
-          <div class="bg-slate-50 px-3 py-1 rounded-lg border border-slate-200 shadow-sm">
-            <span class="text-slate-500 mr-2">A359:</span>
-            <span id="hours-a359" style="color: #23569d;" class="text-base font-bold">0:00</span>
-          </div>
-          <div class="bg-slate-50 px-3 py-1 rounded-lg border border-slate-200 shadow-sm">
-            <span class="text-slate-500 mr-2">A35K:</span>
-            <span id="hours-a35k" style="color: #23569d;" class="text-base font-bold">0:00</span>
-          </div>
-        </div>
-      </div>
+  <div class="dashboard-layout">
+    
+    <!-- 左側：正方形地圖 -->
+    <div class="map-section">
+      <div id="map"></div>
     </div>
-  </header>
 
-  <!-- 主要內容區：左右拆分版面 -->
-  <main class="max-w-[98vw] mx-auto px-4 py-4 w-full h-[calc(100vh-80px)] overflow-hidden">
-    <div class="grid grid-cols-1 md:grid-cols-12 gap-4 h-full">
+    <!-- 右側：控制面板 + 飛行紀錄表格 -->
+    <div class="content-section">
       
-      <!-- 【左側欄】：地圖區 -->
-      <div class="md:col-span-4 lg:col-span-3 bg-white rounded-xl border border-slate-200 p-2 shadow-sm flex flex-col h-full overflow-hidden">
-        <div id="map" class="w-full h-full rounded-lg"></div>
+      <!-- 控制面板 -->
+      <div class="control-panel">
+        <div class="panel-title">控制面板 / 系統操作</div>
+        <div class="btn-group">
+          <button class="btn btn-primary">+ 新增飛行紀錄</button>
+          <button class="btn btn-success">匯出 CSV</button>
+          <button class="btn btn-dark">匯入 CSV</button>
+        </div>
       </div>
 
-      <!-- 【右側欄】：數據與按鈕區 (上下排列) -->
-      <div class="md:col-span-8 lg:col-span-9 flex flex-col gap-4 h-full overflow-hidden">
-        
-        <!-- 右上：控制面板 / 按鈕區 -->
-        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm shrink-0 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
-            <h2 class="text-base font-bold text-slate-800 mb-1 flex items-center gap-2">
-              <i data-lucide="sliders" class="w-5 h-5" style="color: #23569d;"></i>
-              <span>控制面板 / 系統操作</span>
-            </h2>
-            <p class="text-xs text-slate-500">在此快速新增飛行日誌紀錄或進行 CSV 檔案數據備份與匯入。</p>
-          </div>
-
-          <div class="flex items-center gap-3 w-full sm:w-auto">
-            <!-- 新增飛行紀錄按鈕 -->
-            <button onclick="openCreateModal()" class="flex-1 sm:flex-none text-white font-semibold py-2.5 px-5 rounded-xl shadow-md transition-all hover:opacity-90 flex items-center justify-center gap-2 text-sm whitespace-nowrap" style="background-color: #23569d;">
-              <i data-lucide="plus-circle" class="w-4 h-4"></i>
-              <span>新增飛行紀錄</span>
-            </button>
-
-            <!-- 匯出 CSV 按鈕 -->
-            <button onclick="exportToCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-colors whitespace-nowrap">
-              <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
-              <span>匯出 CSV</span>
-            </button>
-
-            <!-- 匯入 CSV 按鈕 -->
-            <label class="bg-slate-700 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap">
-              <i data-lucide="upload" class="w-4 h-4"></i>
-              <span>匯入 CSV</span>
-              <input type="file" id="csv-file-input" accept=".csv" class="hidden" onchange="importFromCSV(event)">
-            </label>
-          </div>
-        </div>
-
-        <!-- 右下：數據表格區 (支援左右橫向滾輪) -->
-        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-md flex-1 flex flex-col min-h-0">
-          <div class="overflow-x-auto overflow-y-auto h-full w-full flex-1">
-            <table class="w-full text-center border-collapse text-xs">
-              <thead>
-                <tr style="background-color: #23569d;" class="sticky top-0 z-10 text-white border-b border-blue-900 whitespace-nowrap shadow-sm">
-                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d] relative">
-                    <div class="inline-flex items-center justify-center gap-1.5">
-                      <span>日期</span>
-                      <button type="button" onclick="openDatePicker()" class="hover:text-blue-200 transition-colors focus:outline-none cursor-pointer" title="搜尋日期">
-                        <i data-lucide="search" class="w-3.5 h-3.5 inline-block"></i>
-                      </button>
-                      <button id="reset-date-btn" type="button" onclick="resetDateFilter()" class="hidden hover:text-red-300 transition-colors focus:outline-none cursor-pointer" title="清除搜尋">
-                        <i data-lucide="x-circle" class="w-3.5 h-3.5 inline-block"></i>
-                      </button>
-                    </div>
-                    <input type="date" id="date-search-input" class="absolute opacity-0 pointer-events-none w-0 h-0 bottom-0 left-1/2" onchange="filterByDate(this.value)"/>
-                  </th>
-                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">機型</th>
-                  
-                  <!-- 出發地表頭 -->
-                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d] relative">
-                    <div class="inline-flex items-center justify-center gap-1.5">
-                      <span>出發地</span>
-                      <button type="button" onclick="openDepSearchPrompt()" class="hover:text-blue-200 transition-colors focus:outline-none cursor-pointer" title="搜尋出發地">
-                        <i data-lucide="search" class="w-3.5 h-3.5 inline-block"></i>
-                      </button>
-                      <button id="reset-dep-btn" type="button" onclick="resetDepFilter()" class="hidden hover:text-red-300 transition-colors focus:outline-none cursor-pointer" title="清除搜尋">
-                        <i data-lucide="x-circle" class="w-3.5 h-3.5 inline-block"></i>
-                      </button>
-                    </div>
-                  </th>
-
-                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d] w-6"></th>
-
-                  <!-- 目的地表頭 -->
-                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d] relative">
-                    <div class="inline-flex items-center justify-center gap-1.5">
-                      <span>目的地</span>
-                      <button type="button" onclick="openDestSearchPrompt()" class="hover:text-blue-200 transition-colors focus:outline-none cursor-pointer" title="搜尋目的地">
-                        <i data-lucide="search" class="w-3.5 h-3.5 inline-block"></i>
-                      </button>
-                      <button id="reset-dest-btn" type="button" onclick="resetDestFilter()" class="hidden hover:text-red-300 transition-colors focus:outline-none cursor-pointer" title="清除搜尋">
-                        <i data-lucide="x-circle" class="w-3.5 h-3.5 inline-block"></i>
-                      </button>
-                    </div>
-                  </th>
-
-                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">飛行時間</th>
-                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">高度 (FL)</th>
-                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">PAX</th>
-                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">Cargo</th>
-                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">起飛重量</th>
-                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">TFG</th>
-                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">TTG</th>
-                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">ENR</th>
-                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">Remaining</th>
-                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">TFU</th>
-                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">降落速度</th>
-                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">Landing V/S</th>
-                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">操作</th>
-                </tr>
-              </thead>
-              <tbody id="flight-table-body" class="divide-y divide-slate-200 text-slate-700"></tbody>
-            </table>
-          </div>
-          
-          <div id="empty-state" class="py-12 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
-            <i data-lucide="plane-takeoff" class="w-10 h-10 opacity-50"></i>
-            <p class="text-sm" id="empty-msg">尚無飛行紀錄，點擊按鈕新增紀錄</p>
-          </div>
-        </div>
-
+      <!-- 飛行紀錄表格 -->
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>日期</th>
+              <th>機型</th>
+              <th>出發地</th>
+              <th>目的地</th>
+              <th>飛行時間</th>
+              <th>高度 (FL)</th>
+              <th>PAX</th>
+              <th>Cargo</th>
+              <th>起飛重量</th>
+              <th>Remaining</th>
+              <th>降落速度</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>2026-09-29</td>
+              <td><span class="badge-aircraft">A359</span></td>
+              <td>PEK</td>
+              <td>EZE</td>
+              <td>20:59</td>
+              <td>FL 400</td>
+              <td>220</td>
+              <td>10,000</td>
+              <td>280,523</td>
+              <td>16,279</td>
+              <td>129 kt</td>
+            </tr>
+            <tr>
+              <td>2026-09-11</td>
+              <td><span class="badge-aircraft">A35K</span></td>
+              <td>SYD</td>
+              <td>PEK</td>
+              <td>10:28</td>
+              <td>FL 320</td>
+              <td>344</td>
+              <td>16,000</td>
+              <td>273,520</td>
+              <td>6,519</td>
+              <td>128 kt</td>
+            </tr>
+            <tr>
+              <td>2026-09-11</td>
+              <td><span class="badge-aircraft">A35K</span></td>
+              <td>PER</td>
+              <td>SYD</td>
+              <td>4:01</td>
+              <td>FL 350</td>
+              <td>295</td>
+              <td>14,700</td>
+              <td>232,300</td>
+              <td>10,941</td>
+              <td>130 kt</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
+
     </div>
-  </main>
 
-  <!-- 公告編輯 Modal -->
-  <div id="announcement-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl relative">
-      <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
-        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-          <i data-lucide="megaphone" class="w-5 h-5" style="color: #D46475;"></i>
-          <span>編輯跑馬燈公告</span>
-        </h3>
-        <button class="text-slate-400 hover:text-slate-600" onclick="closeAnnouncementModal()">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-      <form onsubmit="saveAnnouncement(event)" class="space-y-4">
-        <div>
-          <label class="text-xs font-medium text-slate-600 block mb-1" for="announcement-input">公告內容</label>
-          <textarea id="announcement-input" rows="3" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm text-slate-800 focus:outline-none focus:border-blue-500" placeholder="請輸入公告內容..."></textarea>
-        </div>
-        <div class="flex gap-3">
-          <button type="button" onclick="closeAnnouncementModal()" class="w-1/3 py-2 rounded-lg font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm">取消</button>
-          <button type="submit" id="announcement-submit-btn" class="w-2/3 py-2 rounded-lg font-medium transition-colors hover:opacity-90 text-white text-sm" style="background-color: #D46475;">儲存公告</button>
-        </div>
-      </form>
-    </div>
   </div>
 
-  <!-- 新增/編輯飛行紀錄 Modal -->
-  <div id="modal-overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
-    <div class="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl relative my-8">
-      <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
-        <h3 id="modal-title" class="text-lg font-bold text-slate-800 flex items-center gap-2">
-          <i data-lucide="file-plus" class="w-5 h-5" style="color: #23569d;"></i> <span>新增飛行紀錄</span>
-        </h3>
-        <button class="text-slate-400 hover:text-slate-600" onclick="toggleForm()">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <form id="flight-form" class="space-y-3" onsubmit="handleSubmit(event)">
-        <input type="hidden" id="f-doc-id" value="">
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-date">日期</label>
-            <input id="f-date" type="date" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none focus:border-blue-400" required>
-          </div>
-          <div>
-            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-aircraft">機型</label>
-            <select id="f-aircraft" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none focus:border-blue-400">
-              <option value="A359">A359</option>
-              <option value="A35K">A35K</option>
-              <option value="B77W">B77W</option>
-            </select>
-          </div>
-        </div>
-        <div class="grid grid-cols-4 gap-3">
-          <div>
-            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-dep-iata">出發 IATA</label>
-            <input id="f-dep-iata" type="text" placeholder="例: TPE" maxlength="3" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 uppercase focus:outline-none" oninput="autoFillICAO('dep')">
-          </div>
-          <div>
-            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-dep-icao">出發 ICAO</label>
-            <input id="f-dep-icao" type="text" placeholder="例: RCTP" maxlength="4" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 uppercase focus:outline-none">
-          </div>
-          <div>
-            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-dest-iata">目的 IATA</label>
-            <input id="f-dest-iata" type="text" placeholder="例: HND" maxlength="3" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 uppercase focus:outline-none" oninput="autoFillICAO('dest')">
-          </div>
-          <div>
-            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-dest-icao">目的 ICAO</label>
-            <input id="f-dest-icao" type="text" placeholder="例: RJTT" maxlength="4" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 uppercase focus:outline-none">
-          </div>
-        </div>
-        <div class="grid grid-cols-3 gap-3">
-          <div>
-            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-pax">乘客數量 (PAX)</label>
-            <input id="f-pax" type="number" min="0" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none">
-          </div>
-          <div>
-            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-cargo">Cargo</label>
-            <input id="f-cargo" type="number" min="0" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none">
-          </div>
-          <div>
-            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-tow">起飛重量 (TOW)</label>
-            <input id="f-tow" type="number" min="0" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none">
-          </div>
-        </div>
-        <div class="grid grid-cols-3 gap-3">
-          <div>
-            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-tfg">TFG</label>
-            <input id="f-tfg" type="text" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none">
-          </div>
-          <div>
-            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-ttg">TTG</label>
-            <input id="f-ttg" type="text" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none">
-          </div>
-          <div>
-            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-enr">ENR</label>
-            <input id="f-enr" type="text" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none">
-          </div>
-        </div>
-        <div class="grid grid-cols-3 gap-3">
-          <div>
-            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-remaining">REMAINING</label>
-            <input id="f-remaining" type="text" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none">
-          </div>
-          <div>
-            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-tfu">TFU</label>
-            <input id="f-tfu" type="text" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none">
-          </div>
-          <div>
-            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-fl">飛行高度 (FL)</label>
-            <input id="f-fl" type="text" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none">
-          </div>
-        </div>
-        <div class="grid grid-cols-4 gap-3">
-          <div>
-            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-lspd">降落速度</label>
-            <input id="f-lspd" type="number" min="0" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none">
-          </div>
-          <div>
-            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-lvs">Landing V/S</label>
-            <input id="f-lvs" type="number" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none">
-          </div>
-          <div>
-            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-hours">小時</label>
-            <input id="f-hours" type="number" min="0" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none">
-          </div>
-          <div>
-            <label class="text-xs font-medium text-slate-600 block mb-1" for="f-minutes">分鐘</label>
-            <input id="f-minutes" type="number" min="0" max="59" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none">
-          </div>
-        </div>
-        <div class="pt-3 flex gap-3">
-          <button type="button" onclick="toggleForm()" class="w-1/3 py-2 rounded-lg font-medium bg-slate-100 hover:bg-slate-200 text-slate-600">取消</button>
-          <button id="f-submit-btn" type="submit" class="w-2/3 py-2 rounded-lg font-medium transition-colors hover:opacity-90 text-white" style="background-color: #23569d;">儲存紀錄</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    let flights = [];
-    let selectedFilterDate = '';
-    let selectedFilterDep = '';
-    let selectedFilterDest = '';
-    let map, routeLayerGroup;
-    let currentAnnouncementText = "歡迎使用 China Airlines FlightLog System！";
-
-    // 通用數字/文字千分位格式化函式
-    function formatNumber(val) {
-      if (val === null || val === undefined || val === '') return '—';
-      const num = Number(val);
-      if (!isNaN(num)) {
-        return num.toLocaleString('en-US');
-      }
-      return String(val).replace(/\d+/g, (match) => Number(match).toLocaleString('en-US'));
-    }
-
-    // 機場座標庫
-    const AIRPORT_COORDS = {
-      "TPE": [25.0777, 121.2330], "TSA": [25.0697, 121.5525], "KHH": [22.5771, 120.3500], "RMQ": [24.2646, 120.6210], "HKG": [22.3080, 113.9185], "MFM": [22.1496, 113.5916],
-      "PEK": [40.0799, 116.6031], "PKX": [39.5098, 116.4105], "PVG": [31.1443, 121.8083], "SHA": [31.1979, 121.3363],
-      "CAN": [23.3924, 113.2988], "SZX": [22.6393, 113.8107], "CTU": [30.5785, 103.9471], "TFU": [30.3086, 104.4442],
-      "CKG": [29.7192, 106.6417], "HGH": [30.2295, 120.4344], "NKG": [31.7420, 118.8619], "WUH": [30.7838, 114.2081],
-      "CSX": [28.1892, 113.2196], "CGO": [34.5197, 113.8409], "XIY": [34.4471, 108.7516], "TSN": [39.1244, 117.3462],
-      "TAO": [36.3168, 120.3744], "TNA": [36.8572, 117.2161], "DLC": [38.9656, 121.5386], "SHE": [41.6398, 123.4834],
-      "HRB": [45.6234, 126.2503], "CGQ": [43.9962, 125.6853], "FOC": [25.9351, 119.6633], "XMN": [24.5440, 118.1278],
-      "KMG": [24.9924, 102.9292], "NNG": [22.6083, 108.1724], "HAK": [19.9349, 110.4589], "SYX": [18.3029, 109.4123],
-      "KWE": [26.5385, 106.8007], "URC": [43.9071, 87.4742],  "LXA": [29.2978, 91.1353],   "LHW": [36.5148, 103.6213],
-      "TYN": [37.7469, 112.6283], "SJW": [38.2807, 114.6971], "INC": [38.3213, 106.3931], "XNN": [36.4782, 102.0431],
-      "HET": [40.8522, 111.8242], "KHN": [28.8650, 115.9000], "HEF": [31.9892, 116.9786], "WNZ": [27.9122, 120.8519],
-      "NGB": [29.8267, 121.4619], "SWA": [23.5511, 116.5053], "ZUH": [22.0089, 113.3761],
-      "LAX": [33.9416, -118.4085], "SFO": [37.6213, -122.3790], "JFK": [40.6413, -73.7781], "EWR": [40.6925, -74.1686],
-      "ORD": [41.9742, -87.9073], "SEA": [47.4502, -122.3088], "DFW": [32.8998, -97.0403], "ATL": [33.6407, -84.4277],
-      "MIA": [25.7959, -80.2870], "BOS": [42.3656, -71.0096], "IAD": [38.9531, -77.4565], "DCA": [38.8512, -77.0377],
-      "LAS": [36.0840, -115.1537], "PHX": [33.4352, -112.0101], "DEN": [39.8561, -104.6737], "IAH": [29.9902, -95.3368],
-      "MSP": [44.8848, -93.2223], "DTW": [42.2162, -83.3554], "PHL": [39.8721, -75.2407], "CLT": [35.2140, -80.9431],
-      "MCO": [28.4312, -81.3081], "SAN": [32.7338, -117.1933], "PDX": [45.5898, -122.5951], "SLC": [40.7899, -111.9791],
-      "ANC": [61.1744, -149.9963], "HNL": [21.3187, -157.9224], "YVR": [49.1967, -123.1815], "YYZ": [43.6777, -79.6248],
-      "YUL": [45.4657, -73.7455], "YYC": [51.1139, -114.0203], "ONT": [34.0560, -117.6012],
-      "LHR": [51.4700, -0.4543], "LGW": [51.1537, -0.1821], "MAN": [53.3537, -2.2750], "EDI": [55.9500, -3.3725],
-      "CDG": [49.0097, 2.5479],  "ORY": [48.7262, 2.3652],   "NCE": [43.6653, 7.2150],   "LYS": [45.7256, 5.0811],
-      "FRA": [50.0379, 8.5622],  "MUC": [48.3537, 11.7861],  "BER": [52.3667, 13.5033],  "DUS": [51.2895, 6.7668], "HAM": [53.6304, 9.9882],
-      "AMS": [52.3105, 4.7683],  "BRU": [50.9010, 4.4856],   "ZRH": [47.4582, 8.5555],   "GVA": [46.2370, 6.1092],
-      "VIE": [48.1103, 16.5697], "MAD": [40.4839, -3.5680],  "BCN": [41.2974, 2.0785],   "AGP": [36.6749, -4.4991],
-      "FCO": [41.8003, 12.2389], "MXP": [45.6300, 8.7281],   "VCE": [45.5053, 12.3519],  "ATH": [37.9364, 23.9472],
-      "LIS": [38.7756, -9.1354], "OPO": [41.2481, -8.6814],  "DUB": [53.4264, -6.2700],  "CPH": [55.6180, 12.6508],
-      "ARN": [59.6453, 17.9186], "OSL": [60.1976, 11.1004],  "HEL": [60.3172, 24.9633],  "WAW": [52.1672, 20.9679],
-      "PRG": [50.1008, 14.2600], "BUD": [47.4369, 19.2556],  "IST": [41.2753, 28.7519],  "SAW": [40.8986, 29.3092],
-      "SVO": [55.9726, 37.4146], "DME": [55.4088, 37.9063],  "TLS": [43.6291, 1.3638],
-      "HND": [35.5494, 139.7798], "NRT": [35.7647, 140.3863], "KIX": [34.4320, 135.2304], "NGO": [34.8583, 136.8053],
-      "CTS": [42.7752, 141.6923], "FUK": [33.5859, 130.4507], "OKA": [26.1958, 127.6458], "SDJ": [38.1397, 140.9170],
-      "ICN": [37.4602, 126.4407], "GMP": [37.5583, 126.7906], "PUS": [35.1795, 128.9382], "CJU": [33.5113, 126.4928],
-      "SIN": [1.3644, 103.9915], "BKK": [13.6900, 100.7501], "DMK": [13.9126, 100.6068], "KUL": [2.7456, 101.7099],
-      "MNL": [14.5086, 121.0194], "CGK": [-6.1256, 106.6558], "DPS": [-8.7482, 115.1672], "SGN": [10.8188, 106.6519],
-      "HAN": [21.2212, 105.8072], "DXB": [25.2532, 55.3657],  "DOH": [25.2731, 51.6081],  "AUH": [24.4330, 54.6511],
-      "SYD": [-33.9399, 151.1753], "MEL": [-37.6690, 144.8410], "BNE": [-27.3842, 153.1175], "AKL": [-37.0082, 174.7850],
-      "GRU": [-23.4356, -46.4731], "GIG": [-22.8099, -43.2505], "EZE": [-34.8222, -58.5358], "SCL": [-33.3930, -70.7858],
-      "JNB": [-26.1367, 28.2411], "CAI": [30.1219, 31.4056], "BOG": [4.7016, -74.1469], "PER": [-31.9403, 115.9669]
-    };
-
-    const AIRPORT_MAP = {
-      "TPE": "RCTP", "TSA": "RCSS", "KHH": "RCKH", "RMQ": "RCMQ", "HKG": "VHHH", "MFM": "VMMC",
-      "PEK": "ZBAA", "PKX": "ZBAD", "PVG": "ZSPD", "SHA": "ZSSS", "CAN": "ZGGG", "SZX": "ZGSZ", "CTU": "ZUUU", "TFU": "ZATL",
-      "CKG": "ZUCK", "HGH": "ZSHC", "NKG": "ZSNJ", "WUH": "ZHHH", "CSX": "ZGHA", "CGO": "ZHCC", "XIY": "ZLXY", "TSN": "ZBTJ",
-      "TAO": "ZSQD", "TNA": "ZSJN", "DLC": "ZYTL", "SHE": "ZYTX", "HRB": "ZYHB", "CGQ": "ZYCC", "FOC": "ZSFZ", "XMN": "ZSAM",
-      "KMG": "ZPPP", "NNG": "ZGNN", "HAK": "ZJHK", "SYX": "ZJSY", "KWE": "ZUGU", "URC": "ZWWW", "LXA": "ZULS", "LHW": "ZLLL",
-      "TYN": "ZBYN", "SJW": "ZBSJ", "INC": "ZLIC", "XNN": "ZLXN", "HET": "ZBHH", "KHN": "ZSCN", "HEF": "ZSOF", "WNZ": "ZSWZ",
-      "NGB": "ZSNB", "SWA": "ZGOW", "ZUH": "ZGSD", "PER": "YPPH",
-      "LAX": "KLAX", "SFO": "KSFO", "JFK": "KJFK", "EWR": "KEWR", "ORD": "KORD", "SEA": "KSEA", "DFW": "KDFW", "ATL": "KATL",
-      "MIA": "KMIA", "BOS": "KBOS", "IAD": "KIAD", "DCA": "KDCA", "LAS": "KLAS", "PHX": "KPHX", "DEN": "KDEN", "IAH": "KIAH",
-      "MSP": "KMSP", "DTW": "KDTW", "PHL": "KPHL", "CLT": "KCLT", "MCO": "KMCO", "SAN": "KSAN", "PDX": "KPDX", "SLC": "KSLC",
-      "ANC": "PANC", "HNL": "PHNL", "YVR": "CYVR", "YYZ": "CYYZ", "YUL": "CYUL", "YYC": "CYYC", "ONT": "KONT",
-      "LHR": "EGLL", "LGW": "EGKK", "MAN": "EGCC", "EDI": "EGPH", "CDG": "LFPG", "ORY": "LFPO", "NCE": "LFMN", "LYS": "LFLL",
-      "FRA": "EDDF", "MUC": "EDDM", "BER": "EDDB", "DUS": "EDDL", "HAM": "EDDH", "AMS": "EHAM", "BRU": "EBBR", "ZRH": "LSZH",
-      "GVA": "LSGG", "VIE": "LOWW", "MAD": "LEMD", "BCN": "LEBL", "AGP": "LEMG", "FCO": "LIRF", "MXP": "LIMC", "VCE": "LIPZ",
-      "ATH": "LGAV", "LIS": "LPPT", "OPO": "LPPR", "DUB": "EIDW", "CPH": "EKCH", "ARN": "ESSA", "OSL": "ENGM", "HEL": "EFHK",
-      "WAW": "EPWA", "PRG": "LKPR", "BUD": "LHBP", "IST": "LTFM", "SAW": "LTFJ", "SVO": "UUEE", "DME": "UUDD", "TLS": "LFBO",
-      "HND": "RJTT", "NRT": "RJAA", "KIX": "RJBB", "NGO": "RJGG", "CTS": "RJCC", "FUK": "RJFF", "OKA": "ROAH", "ICN": "RKSI",
-      "GMP": "RKSS", "PUS": "RKPK", "CJU": "RKPC", "SIN": "WSSS", "BKK": "VTBS", "DMK": "VTBD", "KUL": "WMKK", "MNL": "RPLL",
-      "CGK": "WIII", "DPS": "WADD", "SGN": "VVTS", "HAN": "VVNB", "DXB": "OMDB", "DOH": "OTHH", "AUH": "OMAA", "SYD": "YSSY",
-      "MEL": "YMML", "BNE": "YBBN", "AKL": "NZAA", "GRU": "SBGR", "GIG": "SBGL", "EZE": "SAEZ", "SCL": "SCEL", "JNB": "FAOR", "CAI": "HECA"
-    };
-
-    // ===== 公告跑馬燈功能 =====
-    function initAnnouncementListener() {
-      db.collection("announcements").doc("latest")
-        .onSnapshot((doc) => {
-          if (doc.exists && doc.data().text) {
-            currentAnnouncementText = doc.data().text;
-          } else {
-            currentAnnouncementText = "歡迎使用 China Airlines FlightLog System！";
-          }
-          document.getElementById('marquee-text').textContent = currentAnnouncementText;
-        }, (error) => {
-          console.error("公告監聽失敗:", error);
-          document.getElementById('marquee-text').textContent = "歡迎使用 China Airlines FlightLog System！";
-        });
-    }
-
-    function openAnnouncementModal() {
-      document.getElementById('announcement-input').value = currentAnnouncementText;
-      document.getElementById('announcement-modal').classList.remove('hidden');
-    }
-
-    function closeAnnouncementModal() {
-      document.getElementById('announcement-modal').classList.add('hidden');
-    }
-
-    async function saveAnnouncement(e) {
-      e.preventDefault();
-      const btn = document.getElementById('announcement-submit-btn');
-      const text = document.getElementById('announcement-input').value.trim();
-      if (!text) return alert('請輸入公告內容');
-
-      btn.disabled = true;
-      try {
-        await db.collection("announcements").doc("latest").set({
-          text: text,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        closeAnnouncementModal();
-      } catch (err) {
-        alert('儲存公告失敗：' + err.message);
-      } finally {
-        btn.disabled = false;
-      }
-    }
-
-    async function fetchAirportCoords(code) {
-      if (!code) return null;
-      const iata = code.trim().toUpperCase();
-      if (AIRPORT_COORDS[iata]) return AIRPORT_COORDS[iata];
-
-      try {
-        const res = await fetch(`https://port-api.com/airport/iata/${iata}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.geometry && data.geometry.coordinates) {
-            const coords = [data.geometry.coordinates[1], data.geometry.coordinates[0]];
-            AIRPORT_COORDS[iata] = coords;
-            return coords;
-          }
-        }
-      } catch (e) {
-        console.warn(`無效機場: ${iata}`, e);
-      }
-      return null;
-    }
-
-    function initMap() {
-      map = L.map('map', {
-        center: [20, 0],
-        zoom: 2,
-        minZoom: 2,
-        zoomControl: true,
-        maxBounds: [[-90, -180], [90, 180]],
-        maxBoundsViscosity: 1.0
-      });
-
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap',
-        maxZoom: 19,
-        noWrap: true
-      }).addTo(map);
-
-      routeLayerGroup = L.layerGroup().addTo(map);
-
-      // 自動監聽動態尺寸調整，防止白邊與渲染問題
-      const resizeObserver = new ResizeObserver(() => {
-        if (map) map.invalidateSize();
-      });
-      resizeObserver.observe(document.getElementById('map'));
-    }
-
-    function getSplitGreatCircleArcs(start, end, nPoints = 80) {
-      const toRad = deg => (deg * Math.PI) / 180;
-      const toDeg = rad => (rad * 180) / Math.PI;
-
-      const lat1 = toRad(start[0]), lon1 = toRad(start[1]);
-      const lat2 = toRad(end[0]), lon2 = toRad(end[1]);
-
-      const d = 2 * Math.asin(Math.sqrt(
-        Math.pow(Math.sin((lat1 - lat2) / 2), 2) +
-        Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin((lon1 - lon2) / 2), 2)
-      ));
-
-      if (d === 0) return [[start, end]];
-
-      const rawPoints = [];
-      for (let i = 0; i <= nPoints; i++) {
-        const f = i / nPoints;
-        const A = Math.sin((1 - f) * d) / Math.sin(d);
-        const B = Math.sin(f * d) / Math.sin(d);
-
-        const x = A * Math.cos(lat1) * Math.cos(lon1) + B * Math.cos(lat2) * Math.cos(lon2);
-        const y = A * Math.cos(lat1) * Math.sin(lon1) + B * Math.cos(lat2) * Math.sin(lon2);
-        const z = A * Math.sin(lat1) + B * Math.sin(lat2);
-
-        const lat = Math.atan2(z, Math.sqrt(x * x + y * y));
-        let lon = Math.atan2(y, x);
-
-        rawPoints.push([toDeg(lat), toDeg(lon)]);
-      }
-
-      const arcs = [];
-      let currentArc = [rawPoints[0]];
-
-      for (let i = 1; i < rawPoints.length; i++) {
-        const prev = rawPoints[i - 1];
-        const curr = rawPoints[i];
-
-        if (Math.abs(curr[1] - prev[1]) > 180) {
-          arcs.push(currentArc);
-          currentArc = [curr];
-        } else {
-          currentArc.push(curr);
-        }
-      }
-      arcs.push(currentArc);
-
-      return arcs;
-    }
-
-    async function updateMapRoutes(flightList) {
-      if (!map || !routeLayerGroup) return;
-      routeLayerGroup.clearLayers();
-
-      const bounds = [];
-
-      for (const f of flightList) {
-        const dep = f.departure_iata;
-        const dest = f.destination_iata;
-
-        if (!dep || !dest) continue;
-
-        try {
-          const startCoords = await fetchAirportCoords(dep);
-          const endCoords = await fetchAirportCoords(dest);
-
-          if (startCoords && endCoords) {
-            bounds.push(startCoords, endCoords);
-
-            const splitArcs = getSplitGreatCircleArcs(startCoords, endCoords, 80);
-
-            splitArcs.forEach(arc => {
-              L.polyline(arc, {
-                color: '#23569d',
-                weight: 2.5,
-                opacity: 0.8,
-                dashArray: '6, 6'
-              }).addTo(routeLayerGroup);
-            });
-
-            [{ coord: startCoords, code: dep, type: 'dep' }, { coord: endCoords, code: dest, type: 'dest' }].forEach(item => {
-              L.circleMarker(item.coord, {
-                radius: 4,
-                fillColor: item.type === 'dep' ? '#10b981' : '#ef4444',
-                color: '#ffffff',
-                weight: 1.5,
-                fillOpacity: 0.9
-              }).bindTooltip(item.code, { permanent: false, direction: 'top' })
-                .addTo(routeLayerGroup);
-            });
-          }
-        } catch (err) {
-          console.error(`繪製 ${dep} -> ${dest} 失敗:`, err);
-        }
-      }
-
-      if (bounds.length > 0) {
-        map.fitBounds(bounds, { padding: [30, 30] });
-      }
-    }
-
-    function autoFillICAO(type) {
-      const iataInput = document.getElementById(`f-${type}-iata`);
-      const icaoInput = document.getElementById(`f-${type}-icao`);
-      const val = (iataInput.value || '').trim().toUpperCase();
-      if (val.length === 3) {
-        iataInput.value = val;
-        if (AIRPORT_MAP[val]) icaoInput.value = AIRPORT_MAP[val];
-      }
-    }
-
-    function formatHoursToHM(decimalHours) {
-      const totalMinutes = Math.round((Number(decimalHours) || 0) * 60);
-      const hrs = Math.floor(totalMinutes / 60);
-      const mins = totalMinutes % 60;
-      return `${hrs}:${mins.toString().padStart(2, '0')}`;
-    }
-
-    // ===== 搜尋對應功能 =====
-    function openDatePicker() {
-      const dateInput = document.getElementById('date-search-input');
-      if (dateInput) {
-        if ('showPicker' in HTMLInputElement.prototype) dateInput.showPicker();
-        else dateInput.focus();
-      }
-    }
-
-    function filterByDate(date) {
-      selectedFilterDate = date;
-      const resetBtn = document.getElementById('reset-date-btn');
-      if (resetBtn) {
-        if (date) resetBtn.classList.remove('hidden');
-        else resetBtn.classList.add('hidden');
-      }
-      renderFlights();
-    }
-
-    function resetDateFilter() {
-      const dateInput = document.getElementById('date-search-input');
-      if (dateInput) dateInput.value = '';
-      filterByDate('');
-    }
-
-    function openDepSearchPrompt() {
-      const input = prompt('請輸入出發地 IATA 或 ICAO 代碼（例：TPE 或 RCTP）：', selectedFilterDep);
-      if (input !== null) filterByDep(input.trim());
-    }
-
-    function filterByDep(val) {
-      selectedFilterDep = val.toUpperCase();
-      const resetBtn = document.getElementById('reset-dep-btn');
-      if (resetBtn) {
-        if (selectedFilterDep) resetBtn.classList.remove('hidden');
-        else resetBtn.classList.add('hidden');
-      }
-      renderFlights();
-    }
-
-    function resetDepFilter() { filterByDep(''); }
-
-    function openDestSearchPrompt() {
-      const input = prompt('請輸入目的地 IATA 或 ICAO 代碼（例：HND 或 RJTT）：', selectedFilterDest);
-      if (input !== null) filterByDest(input.trim());
-    }
-
-    function filterByDest(val) {
-      selectedFilterDest = val.toUpperCase();
-      const resetBtn = document.getElementById('reset-dest-btn');
-      if (resetBtn) {
-        if (selectedFilterDest) resetBtn.classList.remove('hidden');
-        else resetBtn.classList.add('hidden');
-      }
-      renderFlights();
-    }
-
-    function resetDestFilter() { filterByDest(''); }
-
-    function initFirestoreListener() {
-      db.collection("flights")
-        .onSnapshot(async (snapshot) => {
-          flights = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-
-          flights.sort((a, b) => {
-            const dateA = new Date(a.flight_date || 0);
-            const dateB = new Date(b.flight_date || 0);
-            if (dateB - dateA !== 0) return dateB - dateA;
-            const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
-            const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
-            return timeB - timeA;
-          });
-
-          await renderFlights();
-        }, (error) => {
-          console.error("Firestore 監聽失敗:", error);
-        });
-    }
-
-    function toggleForm() {
-      document.getElementById('modal-overlay').classList.toggle('hidden');
-    }
-
-    function openCreateModal() {
-      document.getElementById('flight-form').reset();
-      document.getElementById('f-doc-id').value = '';
-      document.getElementById('modal-title').querySelector('span').textContent = '新增飛行紀錄';
-      document.getElementById('f-submit-btn').textContent = '儲存紀錄';
-      toggleForm();
-    }
-
-    function editFlight(docId) {
-      const target = flights.find(f => f.id === docId);
-      if (!target) return;
-
-      document.getElementById('f-doc-id').value = target.id;
-      document.getElementById('f-date').value = target.flight_date || '';
-      document.getElementById('f-aircraft').value = target.aircraft_type || 'A359';
-      document.getElementById('f-dep-iata').value = target.departure_iata || '';
-      document.getElementById('f-dep-icao').value = target.departure_icao || '';
-      document.getElementById('f-dest-iata').value = target.destination_iata || '';
-      document.getElementById('f-dest-icao').value = target.destination_icao || '';
-      document.getElementById('f-pax').value = target.passengers ?? '';
-      document.getElementById('f-cargo').value = target.cargo ?? '';
-      document.getElementById('f-tow').value = target.takeoff_weight ?? '';
-      document.getElementById('f-tfg').value = target.tfg || '';
-      document.getElementById('f-ttg').value = target.ttg || '';
-      document.getElementById('f-enr').value = target.enr || '';
-      document.getElementById('f-remaining').value = target.remaining || '';
-      document.getElementById('f-tfu').value = target.tfu || '';
-      document.getElementById('f-fl').value = target.flight_level || '';
-      document.getElementById('f-lspd').value = target.landing_speed ?? '';
-      document.getElementById('f-lvs').value = target.landing_vs ?? '';
-
-      const totalMinutes = Math.round((Number(target.flight_hours) || 0) * 60);
-      document.getElementById('f-hours').value = Math.floor(totalMinutes / 60);
-      document.getElementById('f-minutes').value = totalMinutes % 60;
-
-      document.getElementById('modal-title').querySelector('span').textContent = '編輯飛行紀錄';
-      document.getElementById('f-submit-btn').textContent = '更新紀錄';
-      toggleForm();
-    }
-
-    async function handleSubmit(e) {
-      e.preventDefault();
-      const btn = e.target.querySelector('[type="submit"]');
-      btn.disabled = true;
-
-      const docId = document.getElementById('f-doc-id').value;
-      const record = {
-        flight_date: document.getElementById('f-date').value || new Date().toISOString().split('T')[0],
-        departure_iata: (document.getElementById('f-dep-iata').value || '').toUpperCase().trim(),
-        departure_icao: (document.getElementById('f-dep-icao').value || '').toUpperCase().trim(),
-        destination_iata: (document.getElementById('f-dest-iata').value || '').toUpperCase().trim(),
-        destination_icao: (document.getElementById('f-dest-icao').value || '').toUpperCase().trim(),
-        aircraft_type: document.getElementById('f-aircraft').value,
-        passengers: parseInt(document.getElementById('f-pax').value) || 0,
-        cargo: parseInt(document.getElementById('f-cargo').value) || 0,
-        takeoff_weight: parseInt(document.getElementById('f-tow').value) || 0,
-        tfg: document.getElementById('f-tfg').value,
-        ttg: document.getElementById('f-ttg').value,
-        enr: document.getElementById('f-enr').value,
-        remaining: document.getElementById('f-remaining').value,
-        tfu: document.getElementById('f-tfu').value,
-        flight_level: document.getElementById('f-fl').value,
-        landing_speed: parseInt(document.getElementById('f-lspd').value) || 0,
-        landing_vs: parseInt(document.getElementById('f-lvs').value) || 0,
-        flight_hours: (parseInt(document.getElementById('f-hours').value) || 0) + ((parseInt(document.getElementById('f-minutes').value) || 0) / 60)
-      };
-
-      try {
-        if (docId) await db.collection("flights").doc(docId).update(record);
-        else {
-          record.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-          await db.collection("flights").add(record);
-        }
-        e.target.reset();
-        toggleForm();
-      } catch (err) {
-        alert('儲存失敗：' + err.message);
-      } finally {
-        btn.disabled = false;
-      }
-    }
-
-    function formatAirport(iata, icao) {
-      const displayIata = iata || '—';
-      const tooltipIcao = icao ? `ICAO: ${icao}` : '';
-      return tooltipIcao 
-        ? `<span title="${tooltipIcao}" class="cursor-help border-b border-dotted border-blue-400 hover:text-blue-600 transition-colors">${displayIata}</span>`
-        : displayIata;
-    }
-
-    async function renderFlights() {
-      const tbody = document.getElementById('flight-table-body');
-      const empty = document.getElementById('empty-state');
-      const emptyMsg = document.getElementById('empty-msg');
-      tbody.innerHTML = '';
-
-      const filteredFlights = flights.filter(f => {
-        let matchDate = true;
-        let matchDep = true;
-        let matchDest = true;
-
-        if (selectedFilterDate) {
-          matchDate = (f.flight_date === selectedFilterDate);
-        }
-
-        if (selectedFilterDep) {
-          const iata = (f.departure_iata || '').toUpperCase();
-          const icao = (f.departure_icao || '').toUpperCase();
-          matchDep = iata.includes(selectedFilterDep) || icao.includes(selectedFilterDep);
-        }
-
-        if (selectedFilterDest) {
-          const iata = (f.destination_iata || '').toUpperCase();
-          const icao = (f.destination_icao || '').toUpperCase();
-          matchDest = iata.includes(selectedFilterDest) || icao.includes(selectedFilterDest);
-        }
-
-        return matchDate && matchDep && matchDest;
-      });
-
-      filteredFlights.forEach(f => {
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-blue-50/50 transition-colors whitespace-nowrap text-center align-middle';
-        
-        const formattedFL = f.flight_level ? 'FL ' + formatNumber(f.flight_level) : '—';
-        const formattedLspd = (f.landing_speed !== null && f.landing_speed !== undefined && f.landing_speed !== '') ? `${formatNumber(f.landing_speed)} kt` : '—';
-        const formattedLvs = (f.landing_vs !== null && f.landing_vs !== undefined && f.landing_vs !== '') ? `${formatNumber(f.landing_vs)} fpm` : '—';
-
-        tr.innerHTML = `
-          <td class="p-3 text-slate-800 font-medium text-center align-middle">${f.flight_date || '—'}</td>
-          <td class="p-3 text-center align-middle"><span class="bg-blue-50 text-blue-600 border border-blue-200 px-2 py-0.5 rounded text-xs font-semibold">${f.aircraft_type || '—'}</span></td>
-          <td class="p-3 font-semibold text-slate-800 text-center align-middle">${formatAirport(f.departure_iata, f.departure_icao)}</td>
-          <td class="p-3 text-slate-400 text-center px-1 align-middle"><i data-lucide="arrow-right" class="w-3.5 h-3.5 inline-block align-middle"></i></td>
-          <td class="p-3 font-semibold text-slate-800 text-center align-middle">${formatAirport(f.destination_iata, f.destination_icao)}</td>
-          <td class="p-3 font-bold text-center align-middle" style="color: #23569d;">${formatHoursToHM(f.flight_hours)}</td>
-          <td class="p-3 text-center align-middle">${formattedFL}</td>
-          <td class="p-3 text-center align-middle">${formatNumber(f.passengers)}</td>
-          <td class="p-3 text-center align-middle">${formatNumber(f.cargo)}</td>
-          <td class="p-3 text-center align-middle">${formatNumber(f.takeoff_weight)}</td>
-          <td class="p-3 text-slate-600 text-center align-middle">${formatNumber(f.tfg)}</td>
-          <td class="p-3 text-slate-600 text-center align-middle">${formatNumber(f.ttg)}</td>
-          <td class="p-3 text-slate-600 text-center align-middle">${formatNumber(f.enr)}</td>
-          <td class="p-3 text-slate-600 text-center align-middle">${formatNumber(f.remaining)}</td>
-          <td class="p-3 text-slate-600 text-center align-middle">${formatNumber(f.tfu)}</td>
-          <td class="p-3 text-slate-600 text-center align-middle">${formattedLspd}</td>
-          <td class="p-3 text-slate-600 text-center align-middle">${formattedLvs}</td>
-          <td class="p-3 text-center align-middle">
-            <div class="inline-flex items-center gap-1">
-              <button class="text-slate-400 hover:text-blue-600 p-1 rounded hover:bg-slate-100 transition-all" title="編輯" onclick="editFlight('${f.id}')"><i data-lucide="pencil" class="w-4 h-4"></i></button>
-              <button class="text-slate-400 hover:text-red-500 p-1 rounded hover:bg-slate-100 transition-all" title="刪除" onclick="deleteFlight('${f.id}')"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-            </div>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-
-      const totalA359 = flights.filter(f => f.aircraft_type === 'A359').reduce((s, f) => s + (Number(f.flight_hours) || 0), 0);
-      const totalA35K = flights.filter(f => f.aircraft_type === 'A35K').reduce((s, f) => s + (Number(f.flight_hours) || 0), 0);
-
-      document.getElementById('hours-a359').textContent = formatHoursToHM(totalA359);
-      document.getElementById('hours-a35k').textContent = formatHoursToHM(totalA35K);
-
-      if (filteredFlights.length) {
-        empty.style.display = 'none';
-      } else {
-        empty.style.display = 'flex';
-        const activeFilters = [];
-        if (selectedFilterDate) activeFilters.push(`日期: ${selectedFilterDate}`);
-        if (selectedFilterDep) activeFilters.push(`出發地: ${selectedFilterDep}`);
-        if (selectedFilterDest) activeFilters.push(`目的地: ${selectedFilterDest}`);
-        
-        emptyMsg.textContent = activeFilters.length 
-          ? `找不到符合條件 (${activeFilters.join(', ')}) 的飛行紀錄` 
-          : '尚無飛行紀錄，點擊按鈕新增紀錄';
-      }
-      
-      lucide.createIcons();
-      await updateMapRoutes(filteredFlights);
-    }
-
-    async function deleteFlight(docId) {
-      if (!docId) return;
-      if (confirm('確定要刪除這筆飛行紀錄嗎？')) {
-        try { await db.collection("flights").doc(docId).delete(); }
-        catch (err) { alert('刪除失敗：' + err.message); }
-      }
-    }
-
-    // ===== CSV 匯出 / 匯入 =====
-    function exportToCSV() {
-      if (!flights || flights.length === 0) {
-        alert('目前無資料可供匯出');
-        return;
-      }
-
-      const headers = [
-        'flight_date', 'aircraft_type', 'departure_iata', 'departure_icao', 
-        'destination_iata', 'destination_icao', 'flight_hours', 'flight_level', 
-        'passengers', 'cargo', 'takeoff_weight', 'tfg', 'ttg', 'enr', 
-        'remaining', 'tfu', 'landing_speed', 'landing_vs'
-      ];
-
-      const csvRows = [headers.join(',')];
-
-      flights.forEach(f => {
-        const row = headers.map(header => {
-          let val = f[header] ?? '';
-          if (typeof val === 'string' && (val.includes(',') || val.includes('"') || val.includes('\n'))) {
-            val = `"${val.replace(/"/g, '""')}"`;
-          }
-          return val;
-        });
-        csvRows.push(row.join(','));
-      });
-
-      const csvContent = '\uFEFF' + csvRows.join('\n');
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `flight_log_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-
-    function importFromCSV(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = async (evt) => {
-        try {
-          const text = evt.target.result;
-          const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
-          if (lines.length < 2) {
-            alert('CSV 檔案格式錯誤或內容為空');
-            return;
-          }
-
-          const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-          const batch = db.batch();
-
-          for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-            const record = {};
-
-            headers.forEach((h, idx) => {
-              let val = values[idx] || '';
-              if (['passengers', 'cargo', 'takeoff_weight', 'landing_speed', 'landing_vs'].includes(h)) {
-                val = parseInt(val) || 0;
-              } else if (h === 'flight_hours') {
-                val = parseFloat(val) || 0;
-              }
-              record[h] = val;
-            });
-
-            record.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-            const docRef = db.collection("flights").doc();
-            batch.set(docRef, record);
-          }
-
-          await batch.commit();
-          alert(`成功匯入 ${lines.length - 1} 筆紀錄！`);
-        } catch (err) {
-          alert('匯入失敗：' + err.message);
-        } finally {
-          e.target.value = '';
-        }
-      };
-
-      reader.readAsText(file);
-    }
-
-    window.onload = () => {
-      initMap();
-      initFirestoreListener();
-      initAnnouncementListener();
-      lucide.createIcons();
-    };
-
-    window.onresize = () => {
-      if (map) map.invalidateSize();
-    };
+    // 1. 初始化 Leaflet 地圖
+    const map = L.map('map').setView([20, 100], 3);
+
+    // 2. 載入 OpenStreetMap 底圖
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // 3. 關鍵修正：確保寬度拉寬後，地圖能完整刷新呈現
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
   </script>
+
 </body>
 </html>
