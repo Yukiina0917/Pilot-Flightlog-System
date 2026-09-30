@@ -111,15 +111,15 @@
 
   <!-- 主要內容區：左右拆分版面 -->
   <main class="max-w-[98vw] mx-auto px-4 py-4 w-full h-[calc(100vh-80px)] overflow-hidden">
-    <div class="grid grid-cols-1 md:grid-cols-12 gap-4 h-full">
+    <div class="flex gap-4 h-full w-full overflow-hidden">
       
-      <!-- 【左側欄】：地圖區 -->
-      <div class="md:col-span-4 lg:col-span-3 bg-white rounded-xl border border-slate-200 p-2 shadow-sm flex flex-col h-full overflow-hidden">
+      <!-- 【左側欄】：地圖區 (鎖定以高度為基準的 1:1 正方形) -->
+      <div class="aspect-square h-full shrink-0 bg-white rounded-xl border border-slate-200 p-2 shadow-sm flex flex-col overflow-hidden">
         <div id="map" class="w-full h-full rounded-lg"></div>
       </div>
 
-      <!-- 【右側欄】：數據與按鈕區 (上下排列) -->
-      <div class="md:col-span-8 lg:col-span-9 flex flex-col gap-4 h-full overflow-hidden">
+      <!-- 【右側欄】：數據與按鈕區 (自動佔滿剩餘寬度) -->
+      <div class="flex-1 min-w-0 flex flex-col gap-4 h-full overflow-hidden">
         
         <!-- 右上：控制面板 / 按鈕區 -->
         <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm shrink-0 flex flex-col sm:flex-row items-center justify-between gap-4">
