@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0", maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>China Airlines FlightLog System</title>
   <link rel="icon" type="image/x-icon" href="https://yukiina0917.sirv.com/Images/CAL-LOGO-64x64.png">
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
@@ -16,7 +16,7 @@
   <style>
     body { 
       font-family: 'DM Sans', sans-serif; 
-      background-color: #ffffff; 
+      background-color: #f8fafc; 
       height: 100vh; 
       overflow: hidden; 
     }
@@ -26,8 +26,8 @@
     ::-webkit-scrollbar-thumb:hover { background: #1a427a; }
     
     #map {
-      width: 95%;
-      height: 300px;
+      width: 100%;
+      height: 100%;
       border-radius: 0.75rem;
       z-index: 10;
       background-color: #e5e7eb;
@@ -67,6 +67,7 @@
 </head>
 
 <body class="flex flex-col h-screen overflow-hidden">
+  <!-- 區塊 1：Header 頂部欄位（保持原樣） -->
   <header class="sticky top-0 z-30 bg-white text-slate-800 border-b border-slate-200 px-6 py-3 shrink-0 shadow-sm h-[80px]">
     <div class="max-w-[96vw] mx-auto flex items-center justify-between gap-4">
       <a href="#" class="flex items-center gap-3 hover:opacity-80 transition-opacity shrink-0">
@@ -74,22 +75,19 @@
         <span class="text-xl font-bold tracking-wide text-slate-900 hidden lg:inline">FlightLog System</span>
       </a>
 
-      <!-- 跑馬燈區域（外層膠囊框套用 #D46475 淡色背景） -->
-<div class="flex-1 max-w-xl mx-2 rounded-full px-3 py-1.5 border flex items-center gap-2 overflow-hidden shadow-inner" style="background-color: #D464751A; border-color: #D4647540;">
-  
-  <!-- 「公告」按鈕（改為實色背景，搭配白色文字與圖示） -->
-  <button type="button" onclick="openAnnouncementModal()" class="flex items-center gap-1 shrink-0 font-semibold text-xs px-2.5 py-0.5 rounded-full text-white shadow-sm transition-all cursor-pointer hover:opacity-90 active:scale-95" style="background-color: #D46475;" title="點擊編輯公告">
-    <i data-lucide="bell" class="w-3.5 h-3.5"></i>
-    <span>公告</span>
-  </button>
-  
-  <!-- 跑馬燈文字區域 -->
-  <div class="overflow-hidden flex-1 relative flex items-center h-5">
-    <div id="marquee-text" class="animate-marquee text-xs font-medium" style="color: #8C2F3D;">
-      載入公告中...
-    </div>
-  </div>
-</div>
+      <!-- 跑馬燈區域 -->
+      <div class="flex-1 max-w-xl mx-2 rounded-full px-3 py-1.5 border flex items-center gap-2 overflow-hidden shadow-inner" style="background-color: #D464751A; border-color: #D4647540;">
+        <button type="button" onclick="openAnnouncementModal()" class="flex items-center gap-1 shrink-0 font-semibold text-xs px-2.5 py-0.5 rounded-full text-white shadow-sm transition-all cursor-pointer hover:opacity-90 active:scale-95" style="background-color: #D46475;" title="點擊編輯公告">
+          <i data-lucide="bell" class="w-3.5 h-3.5"></i>
+          <span>公告</span>
+        </button>
+        
+        <div class="overflow-hidden flex-1 relative flex items-center h-5">
+          <div id="marquee-text" class="animate-marquee text-xs font-medium" style="color: #8C2F3D;">
+            載入公告中...
+          </div>
+        </div>
+      </div>
 
       <div class="flex items-center gap-6 shrink-0">
         <div class="text-right border-r border-slate-200 pr-6 hidden sm:block">
@@ -111,38 +109,58 @@
     </div>
   </header>
 
+  <!-- 主要內容區：包含區塊 2、區塊 3 與下方表格 -->
   <main class="max-w-[96vw] mx-auto px-4 py-4 w-full h-[calc(100vh-80px)] flex flex-col gap-4 overflow-hidden">
-    <!-- 上方區域：地圖與右側操作按鈕區 -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 shrink-0 items-center">
-      <!-- 左側 3 欄放置地圖 -->
-      <div class="md:col-span-3 bg-white rounded-xl border border-slate-200 p-2 shadow-sm">
+    
+    <!-- 上方雙區塊容器 (區塊 2 + 區塊 3) -->
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-4 shrink-0 max-h-[320px]">
+      
+      <!-- 區塊 2：正方形地圖區 -->
+      <div class="md:col-span-5 lg:col-span-4 bg-white rounded-xl border border-slate-200 p-2 shadow-sm flex justify-center items-center overflow-hidden aspect-square max-h-[320px] mx-auto w-full">
         <div id="map"></div>
       </div>
 
-      <!-- 右側 1 欄放置控制按鈕 -->
-      <div class="bg-slate-50 rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col gap-3 justify-center h-full">
-        <button onclick="openCreateModal()" class="w-full text-white font-semibold py-2.5 px-4 rounded-lg shadow transition-all hover:opacity-90 flex items-center justify-center gap-2" style="background-color: #23569d;">
-          <i data-lucide="plus-circle" class="w-5 h-5"></i>
-          <span>新增飛行紀錄</span>
-        </button>
+      <!-- 區塊 3：操作控制卡片區（建議將按鈕擺放於此） -->
+      <div class="md:col-span-7 lg:col-span-8 bg-white rounded-xl border border-slate-200 p-6 shadow-sm flex flex-col justify-between h-full">
+        <div>
+          <h2 class="text-base font-bold text-slate-800 mb-1 flex items-center gap-2">
+            <i data-lucide="sliders" class="w-5 h-5" style="color: #23569d;"></i>
+            <span>控制面板 / 系統操作</span>
+          </h2>
+          <p class="text-xs text-slate-500">在此快速新增飛行日誌紀錄或進行 CSV 檔案數據備份與匯入。</p>
+        </div>
 
-        <div class="grid grid-cols-2 gap-2">
-          <button onclick="exportToCSV()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-3 rounded-lg shadow text-xs flex items-center justify-center gap-1.5 transition-colors">
+        <div class="flex flex-col sm:flex-row items-center gap-3 my-auto pt-2">
+          <!-- 新增飛行紀錄按鈕 -->
+          <button onclick="openCreateModal()" class="w-full sm:flex-1 text-white font-semibold py-3 px-5 rounded-xl shadow-md transition-all hover:opacity-90 flex items-center justify-center gap-2 text-sm" style="background-color: #23569d;">
+            <i data-lucide="plus-circle" class="w-5 h-5"></i>
+            <span>新增飛行紀錄</span>
+          </button>
+
+          <!-- 匯出 CSV 按鈕 -->
+          <button onclick="exportToCSV()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-colors">
             <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
             <span>匯出 CSV</span>
           </button>
 
-          <label class="w-full bg-slate-700 hover:bg-slate-800 text-white font-medium py-2 px-3 rounded-lg shadow text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer">
+          <!-- 匯入 CSV 按鈕 -->
+          <label class="w-full sm:w-auto bg-slate-700 hover:bg-slate-800 text-white font-semibold py-3 px-4 rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer">
             <i data-lucide="upload" class="w-4 h-4"></i>
             <span>匯入 CSV</span>
             <input type="file" id="csv-file-input" accept=".csv" class="hidden" onchange="importFromCSV(event)">
           </label>
         </div>
+
+        <div class="text-[11px] text-slate-400 border-t border-slate-100 pt-2 flex justify-between items-center">
+          <span>Status: System Operational</span>
+          <span>Google Firestore Connected</span>
+        </div>
       </div>
     </div>
 
-    <!-- 下方紀錄表格 -->
+    <!-- 區塊 3 下方：數據表格（支援橫向滾輪） -->
     <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-md flex-1 flex flex-col min-h-0">
+      <!-- 左右移動滾輪（overflow-x-auto） -->
       <div class="overflow-x-auto overflow-y-auto h-full w-full flex-1">
         <table class="w-full text-center border-collapse text-xs">
           <thead>
@@ -220,7 +238,7 @@
     <div class="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl relative">
       <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
         <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-          <i data-lucide="megaphone" class="w-5 h-5 style="color: #D46475;"></i>
+          <i data-lucide="megaphone" class="w-5 h-5" style="color: #D46475;"></i>
           <span>編輯跑馬燈公告</span>
         </h3>
         <button class="text-slate-400 hover:text-slate-600" onclick="closeAnnouncementModal()">
@@ -240,6 +258,7 @@
     </div>
   </div>
 
+  <!-- 新增/編輯飛行紀錄 Modal -->
   <div id="modal-overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
     <div class="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl relative my-8">
       <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
@@ -364,23 +383,16 @@
     // 通用數字/文字千分位格式化函式
     function formatNumber(val) {
       if (val === null || val === undefined || val === '') return '—';
-      
-      // 若傳入純數字或可轉換之數值字串，進行轉換
       const num = Number(val);
       if (!isNaN(num)) {
         return num.toLocaleString('en-US');
       }
-      
-      // 若為純字串且帶有數字（例如 "350"），嘗試以正規表示式取代連續數字
       return String(val).replace(/\d+/g, (match) => Number(match).toLocaleString('en-US'));
     }
 
     // 機場座標庫 [緯度, 經度]
     const AIRPORT_COORDS = {
-      // ===== 台灣及港澳 =====
       "TPE": [25.0777, 121.2330], "TSA": [25.0697, 121.5525], "KHH": [22.5771, 120.3500], "RMQ": [24.2646, 120.6210], "HKG": [22.3080, 113.9185], "MFM": [22.1496, 113.5916],
-
-      // ===== 中國大陸 =====
       "PEK": [40.0799, 116.6031], "PKX": [39.5098, 116.4105], "PVG": [31.1443, 121.8083], "SHA": [31.1979, 121.3363],
       "CAN": [23.3924, 113.2988], "SZX": [22.6393, 113.8107], "CTU": [30.5785, 103.9471], "TFU": [30.3086, 104.4442],
       "CKG": [29.7192, 106.6417], "HGH": [30.2295, 120.4344], "NKG": [31.7420, 118.8619], "WUH": [30.7838, 114.2081],
@@ -392,8 +404,6 @@
       "TYN": [37.7469, 112.6283], "SJW": [38.2807, 114.6971], "INC": [38.3213, 106.3931], "XNN": [36.4782, 102.0431],
       "HET": [40.8522, 111.8242], "KHN": [28.8650, 115.9000], "HEF": [31.9892, 116.9786], "WNZ": [27.9122, 120.8519],
       "NGB": [29.8267, 121.4619], "SWA": [23.5511, 116.5053], "ZUH": [22.0089, 113.3761],
-
-      // ===== 北美洲 =====
       "LAX": [33.9416, -118.4085], "SFO": [37.6213, -122.3790], "JFK": [40.6413, -73.7781], "EWR": [40.6925, -74.1686],
       "ORD": [41.9742, -87.9073], "SEA": [47.4502, -122.3088], "DFW": [32.8998, -97.0403], "ATL": [33.6407, -84.4277],
       "MIA": [25.7959, -80.2870], "BOS": [42.3656, -71.0096], "IAD": [38.9531, -77.4565], "DCA": [38.8512, -77.0377],
@@ -401,9 +411,7 @@
       "MSP": [44.8848, -93.2223], "DTW": [42.2162, -83.3554], "PHL": [39.8721, -75.2407], "CLT": [35.2140, -80.9431],
       "MCO": [28.4312, -81.3081], "SAN": [32.7338, -117.1933], "PDX": [45.5898, -122.5951], "SLC": [40.7899, -111.9791],
       "ANC": [61.1744, -149.9963], "HNL": [21.3187, -157.9224], "YVR": [49.1967, -123.1815], "YYZ": [43.6777, -79.6248],
-      "YUL": [45.4657, -73.7455], "YYC": [51.1139, -114.0203], "ONT": [34.0560, -117.6012], 
-
-      // ===== 歐洲 =====
+      "YUL": [45.4657, -73.7455], "YYC": [51.1139, -114.0203], "ONT": [34.0560, -117.6012],
       "LHR": [51.4700, -0.4543], "LGW": [51.1537, -0.1821], "MAN": [53.3537, -2.2750], "EDI": [55.9500, -3.3725],
       "CDG": [49.0097, 2.5479],  "ORY": [48.7262, 2.3652],   "NCE": [43.6653, 7.2150],   "LYS": [45.7256, 5.0811],
       "FRA": [50.0379, 8.5622],  "MUC": [48.3537, 11.7861],  "BER": [52.3667, 13.5033],  "DUS": [51.2895, 6.7668], "HAM": [53.6304, 9.9882],
@@ -414,22 +422,18 @@
       "ARN": [59.6453, 17.9186], "OSL": [60.1976, 11.1004],  "HEL": [60.3172, 24.9633],  "WAW": [52.1672, 20.9679],
       "PRG": [50.1008, 14.2600], "BUD": [47.4369, 19.2556],  "IST": [41.2753, 28.7519],  "SAW": [40.8986, 29.3092],
       "SVO": [55.9726, 37.4146], "DME": [55.4088, 37.9063],  "TLS": [43.6291, 1.3638],
-
-      // ===== 日本、韓國及東北亞 =====
       "HND": [35.5494, 139.7798], "NRT": [35.7647, 140.3863], "KIX": [34.4320, 135.2304], "NGO": [34.8583, 136.8053],
       "CTS": [42.7752, 141.6923], "FUK": [33.5859, 130.4507], "OKA": [26.1958, 127.6458], "SDJ": [38.1397, 140.9170],
       "ICN": [37.4602, 126.4407], "GMP": [37.5583, 126.7906], "PUS": [35.1795, 128.9382], "CJU": [33.5113, 126.4928],
-
-      // ===== 東南亞、大洋洲、中東與其他 =====该加的逗号都他妈的加仔细了不然跑不了啊
       "SIN": [1.3644, 103.9915], "BKK": [13.6900, 100.7501], "DMK": [13.9126, 100.6068], "KUL": [2.7456, 101.7099],
       "MNL": [14.5086, 121.0194], "CGK": [-6.1256, 106.6558], "DPS": [-8.7482, 115.1672], "SGN": [10.8188, 106.6519],
       "HAN": [21.2212, 105.8072], "DXB": [25.2532, 55.3657],  "DOH": [25.2731, 51.6081],  "AUH": [24.4330, 54.6511],
       "SYD": [-33.9399, 151.1753], "MEL": [-37.6690, 144.8410], "BNE": [-27.3842, 153.1175], "AKL": [-37.0082, 174.7850],
       "GRU": [-23.4356, -46.4731], "GIG": [-22.8099, -43.2505], "EZE": [-34.8222, -58.5358], "SCL": [-33.3930, -70.7858],
-      "JNB": [-26.1367, 28.2411], "CAI": [30.1219, 31.4056], "BOG": [4.7016, -74.1469], "PER": [-31.9403, 115.9669],
+      "JNB": [-26.1367, 28.2411], "CAI": [30.1219, 31.4056], "BOG": [4.7016, -74.1469], "PER": [-31.9403, 115.9669]
     };
 
-    // IATA 對應 ICAO 自動補全對照表 该加的逗号都他妈的加仔细了不然跑不了啊
+    // IATA 對應 ICAO 自動補全對照表
     const AIRPORT_MAP = {
       "TPE": "RCTP", "TSA": "RCSS", "KHH": "RCKH", "RMQ": "RCMQ", "HKG": "VHHH", "MFM": "VMMC",
       "PEK": "ZBAA", "PKX": "ZBAD", "PVG": "ZSPD", "SHA": "ZSSS", "CAN": "ZGGG", "SZX": "ZGSZ", "CTU": "ZUUU", "TFU": "ZATL",
@@ -530,12 +534,15 @@
       });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  maxZoom: 19,
-  noWrap: true
-}).addTo(map);
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+        noWrap: true
+      }).addTo(map);
 
       routeLayerGroup = L.layerGroup().addTo(map);
+
+      // 強制重新計算地圖渲染尺寸（解決正方形與 Grid 切換時地圖未填滿問題）
+      setTimeout(() => { map.invalidateSize(); }, 300);
     }
 
     function getSplitGreatCircleArcs(start, end, nPoints = 80) {
@@ -847,7 +854,6 @@
       const emptyMsg = document.getElementById('empty-msg');
       tbody.innerHTML = '';
 
-      // 多重過濾邏輯：日期、出發地、目的地
       const filteredFlights = flights.filter(f => {
         let matchDate = true;
         let matchDep = true;
@@ -876,9 +882,7 @@
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-blue-50/50 transition-colors whitespace-nowrap text-center align-middle';
         
-        // 格式化 FL 高度欄位
         const formattedFL = f.flight_level ? 'FL ' + formatNumber(f.flight_level) : '—';
-        // 格式化降落速度與 Landing V/S 欄位
         const formattedLspd = (f.landing_speed !== null && f.landing_speed !== undefined && f.landing_speed !== '') ? `${formatNumber(f.landing_speed)} kt` : '—';
         const formattedLvs = (f.landing_vs !== null && f.landing_vs !== undefined && f.landing_vs !== '') ? `${formatNumber(f.landing_vs)} fpm` : '—';
 
@@ -969,7 +973,7 @@
         csvRows.push(row.join(','));
       });
 
-      const csvContent = '\uFEFF' + csvRows.join('\n'); // 加上 UTF-8 BOM 避免 Excel 打開亂碼
+      const csvContent = '\uFEFF' + csvRows.join('\n');
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -1033,6 +1037,11 @@
       initFirestoreListener();
       initAnnouncementListener();
       lucide.createIcons();
+    };
+
+    // 視窗大小改變時，觸發地圖適應
+    window.onresize = () => {
+      if (map) map.invalidateSize();
     };
   </script>
 </body>
