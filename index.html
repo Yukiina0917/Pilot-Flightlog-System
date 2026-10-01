@@ -144,48 +144,65 @@
       <!-- 【右側欄】：數據與按鈕區 -->
       <div class="flex-1 min-w-0 flex flex-col gap-4 h-full overflow-hidden">
         
-        <!-- 右上：控制面板 / 按鈕區 -->
-        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm shrink-0 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
-            <h2 class="text-base font-bold text-slate-800 mb-1 flex items-center gap-2">
-              <i data-lucide="sliders" class="w-5 h-5" style="color: #23569d;"></i>
-              <span>控制面板 / 系統操作</span>
-            </h2>
-            <p class="text-xs text-slate-500">在此快速新增飛行日誌紀錄或進行多格式（CSV / JSON）數據備份與匯入。</p>
-          </div>
-
-          <div class="flex items-center gap-3 w-full sm:w-auto">
-            <!-- 新增飛行紀錄按鈕 -->
-            <button onclick="openCreateModal()" class="flex-1 sm:flex-none text-white font-semibold py-2.5 px-5 rounded-xl shadow-md transition-all hover:opacity-90 flex items-center justify-center gap-2 text-sm whitespace-nowrap" style="background-color: #23569d;">
-              <i data-lucide="plus-circle" class="w-4 h-4"></i>
-              <span>新增飛行紀錄</span>
-            </button>
-
-            <!-- 多格式匯出選單 -->
-            <div class="relative inline-block text-left">
-              <button onclick="toggleExportMenu()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-colors whitespace-nowrap">
-                <i data-lucide="download" class="w-4 h-4"></i>
-                <span>匯出資料</span>
-                <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
-              </button>
-              <div id="export-dropdown" class="hidden absolute right-0 mt-2 w-36 bg-white rounded-xl shadow-lg border border-slate-200 z-50 overflow-hidden py-1">
-                <button onclick="exportToCSV()" class="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 flex items-center gap-2">
-                  <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i>
-                  <span>匯出 CSV</span>
-                </button>
-                <button onclick="exportToJSON()" class="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 flex items-center gap-2">
-                  <i data-lucide="file-json" class="w-4 h-4 text-blue-600"></i>
-                  <span>匯出 JSON</span>
-                </button>
-              </div>
+        <!-- 右上：控制面板 / 天氣查詢與按鈕區 -->
+        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm shrink-0 flex flex-col gap-3">
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <h2 class="text-base font-bold text-slate-800 mb-1 flex items-center gap-2">
+                <i data-lucide="sliders" class="w-5 h-5" style="color: #23569d;"></i>
+                <span>控制面板 / 系統操作</span>
+              </h2>
+              <p class="text-xs text-slate-500">在此快速新增飛行日誌紀錄、即時天氣查詢或進行多格式數據備份匯入。</p>
             </div>
 
-            <!-- 多格式匯入按鈕 (支援 CSV / JSON) -->
-            <label class="bg-slate-700 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap">
-              <i data-lucide="upload" class="w-4 h-4"></i>
-              <span>匯入資料</span>
-              <input type="file" id="data-file-input" accept=".csv, .json" class="hidden" onchange="importFromFile(event)">
-            </label>
+            <div class="flex items-center gap-3 w-full sm:w-auto">
+              <!-- 新增飛行紀錄按鈕 -->
+              <button onclick="openCreateModal()" class="flex-1 sm:flex-none text-white font-semibold py-2.5 px-5 rounded-xl shadow-md transition-all hover:opacity-90 flex items-center justify-center gap-2 text-sm whitespace-nowrap" style="background-color: #23569d;">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                <span>新增飛行紀錄</span>
+              </button>
+
+              <!-- 多格式匯出選單 -->
+              <div class="relative inline-block text-left">
+                <button onclick="toggleExportMenu()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-colors whitespace-nowrap">
+                  <i data-lucide="download" class="w-4 h-4"></i>
+                  <span>匯出資料</span>
+                  <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+                </button>
+                <div id="export-dropdown" class="hidden absolute right-0 mt-2 w-36 bg-white rounded-xl shadow-lg border border-slate-200 z-50 overflow-hidden py-1">
+                  <button onclick="exportToCSV()" class="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 flex items-center gap-2">
+                    <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i>
+                    <span>匯出 CSV</span>
+                  </button>
+                  <button onclick="exportToJSON()" class="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 flex items-center gap-2">
+                    <i data-lucide="file-json" class="w-4 h-4 text-blue-600"></i>
+                    <span>匯出 JSON</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 多格式匯入按鈕 -->
+              <label class="bg-slate-700 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap">
+                <i data-lucide="upload" class="w-4 h-4"></i>
+                <span>匯入資料</span>
+                <input type="file" id="data-file-input" accept=".csv, .json" class="hidden" onchange="importFromFile(event)">
+              </label>
+            </div>
+          </div>
+
+          <!-- 新增：即時 METAR / TAF 天氣查詢區塊 -->
+          <div class="border-t border-slate-100 pt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div class="flex items-center gap-2 shrink-0 text-xs font-bold text-slate-700">
+              <i data-lucide="cloud-sun" class="w-4 h-4 text-sky-600"></i>
+              <span>METAR / TAF 天氣查詢:</span>
+            </div>
+            <div class="flex items-center gap-2 flex-1">
+              <input type="text" id="weather-search-input" placeholder="輸入 ICAO / IATA 代碼 (例如: RCTP / TPE)" class="bg-slate-50 border border-slate-300 text-xs rounded-lg px-3 py-1.5 text-slate-800 uppercase focus:outline-none focus:border-blue-500 w-full max-w-xs">
+              <button onclick="fetchWeatherInfo()" class="bg-sky-600 hover:bg-sky-700 text-white text-xs px-3 py-1.5 rounded-lg shadow transition-colors font-medium flex items-center gap-1 shrink-0">
+                <i data-lucide="search" class="w-3.5 h-3.5"></i> 查詢天氣
+              </button>
+            </div>
+            <div id="weather-result-badge" class="hidden text-xs px-3 py-1 bg-slate-100 text-slate-700 rounded-lg border border-slate-200 flex-1 overflow-hidden truncate"></div>
           </div>
         </div>
 
@@ -331,6 +348,16 @@
             <input id="f-dest-icao" type="text" placeholder="例: RJTT" maxlength="4" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 uppercase focus:outline-none">
           </div>
         </div>
+
+        <!-- 顯示估算距離 Banner -->
+        <div id="route-distance-info" class="bg-blue-50 border border-blue-200 text-blue-900 rounded-lg p-2 text-xs flex items-center justify-between hidden">
+          <span class="font-medium flex items-center gap-1.5">
+            <i data-lucide="navigation" class="w-4 h-4 text-blue-600"></i>
+            <span id="distance-text">航線大圓距離估算: 0 NM</span>
+          </span>
+          <span class="text-blue-500 text-[10px]">自動計算</span>
+        </div>
+
         <div class="grid grid-cols-3 gap-3">
           <div>
             <label class="text-xs font-medium text-slate-600 block mb-1" for="f-pax">乘客數量 (PAX)</label>
@@ -417,7 +444,7 @@
       return String(val).replace(/\d+/g, (match) => Number(match).toLocaleString('en-US'));
     }
 
-    // 機場國家/地區對照表（用於計算解鎖國家徽章）
+    // 機場國家/地區對照表
     const AIRPORT_COUNTRY = {
       "TPE": "Taiwan", "TSA": "Taiwan", "KHH": "Taiwan", "RMQ": "Taiwan", "HKG": "Hong Kong", "MFM": "Macau",
       "PEK": "China", "PKX": "China", "PVG": "China", "SHA": "China", "CAN": "China", "SZX": "China", "CTU": "China",
@@ -432,53 +459,93 @@
       "TPE": [25.0777, 121.2330], "TSA": [25.0697, 121.5525], "KHH": [22.5771, 120.3500], "RMQ": [24.2646, 120.6210], "HKG": [22.3080, 113.9185], "MFM": [22.1496, 113.5916],
       "PEK": [40.0799, 116.6031], "PKX": [39.5098, 116.4105], "PVG": [31.1443, 121.8083], "SHA": [31.1979, 121.3363],
       "CAN": [23.3924, 113.2988], "SZX": [22.6393, 113.8107], "CTU": [30.5785, 103.9471], "TFU": [30.3086, 104.4442],
-      "CKG": [29.7192, 106.6417], "HGH": [30.2295, 120.4344], "NKG": [31.7420, 118.8619], "WUH": [30.7838, 114.2081],
-      "CSX": [28.1892, 113.2196], "CGO": [34.5197, 113.8409], "XIY": [34.4471, 108.7516], "TSN": [39.1244, 117.3462],
-      "TAO": [36.3168, 120.3744], "TNA": [36.8572, 117.2161], "DLC": [38.9656, 121.5386], "SHE": [41.6398, 123.4834],
-      "HRB": [45.6234, 126.2503], "CGQ": [43.9962, 125.6853], "FOC": [25.9351, 119.6633], "XMN": [24.5440, 118.1278],
-      "KMG": [24.9924, 102.9292], "NNG": [22.6083, 108.1724], "HAK": [19.9349, 110.4589], "SYX": [18.3029, 109.4123],
-      "KWE": [26.5385, 106.8007], "URC": [43.9071, 87.4742],  "LXA": [29.2978, 91.1353],   "LHW": [36.5148, 103.6213],
-      "TYN": [37.7469, 112.6283], "SJW": [38.2807, 114.6971], "INC": [38.3213, 106.3931], "XNN": [36.4782, 102.0431],
-      "HET": [40.8522, 111.8242], "KHN": [28.8650, 115.9000], "HEF": [31.9892, 116.9786], "WNZ": [27.9122, 120.8519],
-      "NGB": [29.8267, 121.4619], "SWA": [23.5511, 116.5053], "ZUH": [22.0089, 113.3761],
       "LAX": [33.9416, -118.4085], "SFO": [37.6213, -122.3790], "JFK": [40.6413, -73.7781], "EWR": [40.6925, -74.1686],
-      "ORD": [41.9742, -87.9073], "SEA": [47.4502, -122.3088], "DFW": [32.8998, -97.0403], "ATL": [33.6407, -84.4277],
-      "MIA": [25.7959, -80.2870], "BOS": [42.3656, -71.0096], "IAD": [38.9531, -77.4565], "DCA": [38.8512, -77.0377],
-      "LAS": [36.0840, -115.1537], "PHX": [33.4352, -112.0101], "DEN": [39.8561, -104.6737], "IAH": [29.9902, -95.3368],
-      "MSP": [44.8848, -93.2223], "DTW": [42.2162, -83.3554], "PHL": [39.8721, -75.2407], "CLT": [35.2140, -80.9431],
-      "MCO": [28.4312, -81.3081], "SAN": [32.7338, -117.1933], "PDX": [45.5898, -122.5951], "SLC": [40.7899, -111.9791],
-      "ANC": [61.1744, -149.9963], "HNL": [21.3187, -157.9224], "YVR": [49.1967, -123.1815], "YYZ": [43.6777, -79.6248],
-      "YUL": [45.4657, -73.7455], "YYC": [51.1139, -114.0203], "ONT": [34.0560, -117.6012], 
-      "LHR": [51.4700, -0.4543], "LGW": [51.1537, -0.1821], "MAN": [53.3537, -2.2750], "EDI": [55.9500, -3.3725],
-      "CDG": [49.0097, 2.5479],  "ORY": [48.7262, 2.3652],   "NCE": [43.6653, 7.2150],   "LYS": [45.7256, 5.0811],
-      "FRA": [50.0379, 8.5622],  "MUC": [48.3537, 11.7861],  "BER": [52.3667, 13.5033],  "DUS": [51.2895, 6.7668], "HAM": [53.6304, 9.9882],
-      "AMS": [52.3105, 4.7683],  "BRU": [50.9010, 4.4856],   "ZRH": [47.4582, 8.5555],   "GVA": [46.2370, 6.1092],
-      "VIE": [48.1103, 16.5697], "MAD": [40.4839, -3.5680],  "BCN": [41.2974, 2.0785],   "AGP": [36.6749, -4.4991],
-      "FCO": [41.8003, 12.2389], "MXP": [45.6300, 8.7281],   "VCE": [45.5053, 12.3519],  "ATH": [37.9364, 23.9472],
-      "LIS": [38.7756, -9.1354], "OPO": [41.2481, -8.6814],  "DUB": [53.4264, -6.2700],  "CPH": [55.6180, 12.6508],
-      "ARN": [59.6453, 17.9186], "OSL": [60.1976, 11.1004],  "HEL": [60.3172, 24.9633],  "WAW": [52.1672, 20.9679],
-      "PRG": [50.1008, 14.2600], "BUD": [47.4369, 19.2556],  "IST": [41.2753, 28.7519],  "SAW": [40.8986, 29.3092],
-      "SVO": [55.9726, 37.4146], "DME": [55.4088, 37.9063],  "TLS": [43.6291, 1.3638],
+      "LHR": [51.4700, -0.4543], "CDG": [49.0097, 2.5479], "FRA": [50.0379, 8.5622], "AMS": [52.3105, 4.7683],
       "HND": [35.5494, 139.7798], "NRT": [35.7647, 140.3863], "KIX": [34.4320, 135.2304], "NGO": [34.8583, 136.8053],
-      "CTS": [42.7752, 141.6923], "FUK": [33.5859, 130.4507], "OKA": [26.1958, 127.6458], "SDJ": [38.1397, 140.9170],
-      "ICN": [37.4602, 126.4407], "GMP": [37.5583, 126.7906], "PUS": [35.1795, 128.9382], "CJU": [33.5113, 126.4928],
-      "SIN": [1.3644, 103.9915], "BKK": [13.6900, 100.7501], "DMK": [13.9126, 100.6068], "KUL": [2.7456, 101.7099],
-      "MNL": [14.5086, 121.0194], "CGK": [-6.1256, 106.6558], "DPS": [-8.7482, 115.1672], "SGN": [10.8188, 106.6519],
-      "HAN": [21.2212, 105.8072], "DXB": [25.2532, 55.3657],  "DOH": [25.2731, 51.6081],  "AUH": [24.4330, 54.6511],
-      "SYD": [-33.9399, 151.1753], "MEL": [-37.6690, 144.8410], "BNE": [-27.3842, 153.1175], "AKL": [-37.0082, 174.7850],
-      "GRU": [-23.4356, -46.4731], "GIG": [-22.8099, -43.2505], "EZE": [-34.8222, -58.5358], "SCL": [-33.3930, -70.7858],
-      "JNB": [-26.1367, 28.2411], "CAI": [30.1219, 31.4056], "BOG": [4.7016, -74.1469], "PER": [-31.9403, 115.9669],
+      "CTS": [42.7752, 141.6923], "FUK": [33.5859, 130.4507], "OKA": [26.1958, 127.6458], "ICN": [37.4602, 126.4407],
+      "SIN": [1.3644, 103.9915], "BKK": [13.6900, 100.7501], "KUL": [2.7456, 101.7099], "SYD": [-33.9399, 151.1753]
     };
 
     const AIRPORT_MAP = {
       "TPE": "RCTP", "TSA": "RCSS", "KHH": "RCKH", "RMQ": "RCMQ", "HKG": "VHHH", "MFM": "VMMC",
       "PEK": "ZBAA", "PKX": "ZBAD", "PVG": "ZSPD", "SHA": "ZSSS", "CAN": "ZGGG", "SZX": "ZGSZ", "CTU": "ZUUU", "TFU": "ZATL",
-      "CKG": "ZUCK", "HGH": "ZSHC", "NKG": "ZSNJ", "WUH": "ZHHH", "CSX": "ZGHA", "CGO": "ZHCC", "XIY": "ZLXY", "TSN": "ZBTJ",
-      "LAX": "KLAX", "SFO": "KSFO", "JFK": "KJFK", "EWR": "KEWR", "ORD": "KORD", "SEA": "KSEA", "DFW": "KDFW", "ATL": "KATL",
-      "LHR": "EGLL", "CDG": "LFPG", "FRA": "EDDF", "AMS": "EHAM", "VIE": "LOWW", "FCO": "LIRF",
-      "HND": "RJTT", "NRT": "RJAA", "KIX": "RJBB", "NGO": "RJGG", "CTS": "RJCC", "FUK": "RJFF", "OKA": "ROAH", "ICN": "RKSI",
-      "SIN": "WSSS", "BKK": "VTBS", "KUL": "WMKK", "MNL": "RPLL", "SYD": "YSSY"
+      "LAX": "KLAX", "SFO": "KSFO", "JFK": "KJFK", "EWR": "KEWR", "LHR": "EGLL", "CDG": "LFPG", "FRA": "EDDF",
+      "HND": "RJTT", "NRT": "RJAA", "KIX": "RJBB", "NGO": "RJGG", "CTS": "RJCC", "FUK": "RJFF", "OKA": "ROAH",
+      "ICN": "RKSI", "SIN": "WSSS", "BKK": "VTBS", "KUL": "WMKK", "SYD": "YSSY"
     };
+
+    // ===== Haversine 距離估算算法 (海里 NM) =====
+    function calculateDistanceInNM(lat1, lon1, lat2, lon2) {
+      const R = 3440.065; // 地球平均半徑（海里）
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return Math.round(R * c);
+    }
+
+    // 計算彈出框內的兩點距離
+    async function updateEstimatedDistance() {
+      const depIata = (document.getElementById('f-dep-iata').value || '').trim().toUpperCase();
+      const destIata = (document.getElementById('f-dest-iata').value || '').trim().toUpperCase();
+      const infoBox = document.getElementById('route-distance-info');
+      const distText = document.getElementById('distance-text');
+
+      if (depIata.length === 3 && destIata.length === 3 && depIata !== destIata) {
+        const c1 = await fetchAirportCoords(depIata);
+        const c2 = await fetchAirportCoords(destIata);
+        if (c1 && c2) {
+          const dist = calculateDistanceInNM(c1[0], c1[1], c2[0], c2[1]);
+          distText.textContent = `航線估算距離: ${dist.toLocaleString()} NM (海里)`;
+          infoBox.classList.remove('hidden');
+          return;
+        }
+      }
+      infoBox.classList.add('hidden');
+    }
+
+    // ===== 即時 METAR / TAF 天氣查詢功能 =====
+    async function fetchWeatherInfo() {
+      const input = document.getElementById('weather-search-input').value.trim().toUpperCase();
+      const badge = document.getElementById('weather-result-badge');
+
+      if (!input) {
+        alert('請輸入有效的 ICAO 或 IATA 機場代碼');
+        return;
+      }
+
+      let icao = input;
+      if (input.length === 3 && AIRPORT_MAP[input]) {
+        icao = AIRPORT_MAP[input];
+      }
+
+      badge.classList.remove('hidden');
+      badge.textContent = `正在查詢 ${icao} METAR 即時氣象...`;
+
+      try {
+        const coords = await fetchAirportCoords(input);
+        if (!coords) throw new Error('無法尋獲機場地理座標資訊');
+
+        // open-meteo 氣象 API 請求
+        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${coords[0]}&longitude=${coords[1]}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,weather_code`);
+        if (!res.ok) throw new Error('天氣服務連線失敗');
+
+        const data = await res.json();
+        const current = data.current;
+        
+        badge.innerHTML = `
+          <span class="font-bold text-sky-900">${icao} 即時氣象:</span> 
+          <span>風向 ${current.wind_direction_10m}° / 風速 ${Math.round(current.wind_speed_10m * 0.539957)} kt</span> | 
+          <span>氣溫 ${current.temperature_2m}°C</span> | 
+          <span>相對濕度 ${current.relative_humidity_2m}%</span>
+        `;
+      } catch (err) {
+        badge.textContent = `無法取得 ${icao} 氣象資料: ${err.message}`;
+      }
+    }
 
     function initAnnouncementListener() {
       db.collection("announcements").doc("latest")
@@ -618,13 +685,12 @@
       return arcs;
     }
 
-    // ===== 全球足跡、熱力點、大圓航線與徽章地圖升級渲染邏輯 =====
+    // 地圖路線與熱圖更新
     async function updateMapRoutes(flightList) {
       if (!map || !routeLayerGroup) return;
       routeLayerGroup.clearLayers();
       if (heatLayer) map.removeLayer(heatLayer);
 
-      // 年份過濾
       let targetFlights = flightList;
       if (selectedMapYear !== 'ALL') {
         targetFlights = flightList.filter(f => (f.flight_date || '').startsWith(selectedMapYear));
@@ -642,7 +708,6 @@
 
         if (!dep || !dest) continue;
 
-        // 計算機場起降統計與機型資料
         [dep, dest].forEach((code, isDest) => {
           if (!airportStats[code]) {
             airportStats[code] = { departures: 0, arrivals: 0, total: 0, aircrafts: {} };
@@ -653,7 +718,6 @@
           airportStats[code].aircrafts[aircraft] = (airportStats[code].aircrafts[aircraft] || 0) + 1;
         });
 
-        // 紀錄航線熱度與頻率
         const routeKey = [dep, dest].sort().join('-');
         routeCounts[routeKey] = (routeCounts[routeKey] || 0) + 1;
 
@@ -664,7 +728,6 @@
           if (startCoords && endCoords) {
             bounds.push(startCoords, endCoords);
 
-            // 大圓航線劃設與粗細調整
             const arcWeight = Math.min(1 + routeCounts[routeKey] * 0.8, 6);
             const splitArcs = getSplitGreatCircleArcs(startCoords, endCoords, 80);
 
@@ -682,12 +745,10 @@
         }
       }
 
-      // 1. 繪製熱力圖層 (Leaflet.heat)
       const airportCodes = Object.keys(airportStats);
       for (const code of airportCodes) {
         const coords = await fetchAirportCoords(code);
         if (coords) {
-          // 強度權重以造訪次數為基礎進行正則化
           const intensity = Math.min(airportStats[code].total / 10, 1.0);
           heatData.push([coords[0], coords[1], intensity]);
         }
@@ -702,7 +763,6 @@
         }).addTo(map);
       }
 
-      // 2. 繪製機場標記點與互動數據卡片
       for (const code of airportCodes) {
         const coords = await fetchAirportCoords(code);
         if (!coords) continue;
@@ -736,7 +796,6 @@
         .addTo(routeLayerGroup);
       }
 
-      // 3. 計算與更新區域解鎖徽章數據
       const unlockedAirports = airportCodes.length;
       const countriesSet = new Set(airportCodes.map(code => AIRPORT_COUNTRY[code] || '未知地區'));
       document.getElementById('badge-airports').textContent = `${unlockedAirports} 機場`;
@@ -773,6 +832,7 @@
         iataInput.value = val;
         if (AIRPORT_MAP[val]) icaoInput.value = AIRPORT_MAP[val];
       }
+      updateEstimatedDistance();
     }
 
     function formatHoursToHM(decimalHours) {
@@ -873,6 +933,7 @@
       document.getElementById('f-doc-id').value = '';
       document.getElementById('modal-title').querySelector('span').textContent = '新增飛行紀錄';
       document.getElementById('f-submit-btn').textContent = '儲存紀錄';
+      document.getElementById('route-distance-info').classList.add('hidden');
       toggleForm();
     }
 
@@ -905,6 +966,8 @@
 
       document.getElementById('modal-title').querySelector('span').textContent = '編輯飛行紀錄';
       document.getElementById('f-submit-btn').textContent = '更新紀錄';
+      
+      updateEstimatedDistance();
       toggleForm();
     }
 
@@ -1056,13 +1119,11 @@
       }
     }
 
-    // 切換匯出下拉選單
     function toggleExportMenu() {
       const dropdown = document.getElementById('export-dropdown');
       dropdown.classList.toggle('hidden');
     }
 
-    // 點擊選單外部自動關閉下拉選單
     window.addEventListener('click', (e) => {
       const dropdown = document.getElementById('export-dropdown');
       if (dropdown && !dropdown.contains(e.target) && !e.target.closest('button[onclick="toggleExportMenu()"]')) {
@@ -1070,7 +1131,6 @@
       }
     });
 
-    // 匯出功能 - CSV
     function exportToCSV() {
       const dropdown = document.getElementById('export-dropdown');
       if (dropdown) dropdown.classList.add('hidden');
@@ -1104,7 +1164,6 @@
       downloadFile(csvContent, `flight_log_${new Date().toISOString().split('T')[0]}.csv`, 'text/csv;charset=utf-8;');
     }
 
-    // 匯出功能 - JSON
     function exportToJSON() {
       const dropdown = document.getElementById('export-dropdown');
       if (dropdown) dropdown.classList.add('hidden');
@@ -1119,7 +1178,6 @@
       downloadFile(jsonString, `flight_log_${new Date().toISOString().split('T')[0]}.json`, 'application/json;charset=utf-8;');
     }
 
-    // 輔助函式：檔案下載
     function downloadFile(content, fileName, mimeType) {
       const blob = new Blob([content], { type: mimeType });
       const url = URL.createObjectURL(blob);
@@ -1131,7 +1189,6 @@
       document.body.removeChild(link);
     }
 
-    // 多格式匯入處理 (自動依副檔名選擇 CSV 或 JSON 解析)
     function importFromFile(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -1177,7 +1234,6 @@
       reader.readAsText(file);
     }
 
-    // 解析 CSV 文本
     function parseCSVData(text) {
       const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
       if (lines.length < 2) return [];
@@ -1203,7 +1259,6 @@
       return records;
     }
 
-    // 解析 JSON 文本
     function parseJSONData(text) {
       const parsed = JSON.parse(text);
       const dataArray = Array.isArray(parsed) ? parsed : [parsed];
