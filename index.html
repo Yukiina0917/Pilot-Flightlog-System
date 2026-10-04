@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>China Airlines FlightLog System</title>
   <link rel="icon" type="image/x-icon" href="https://yukiina0917.sirv.com/Images/CAL-LOGO-64x64.png">
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
@@ -48,6 +48,52 @@
     .animate-marquee:hover {
       animation-play-state: paused;
     }
+
+    /* ==========================================================
+       📱 手機 / 平板版排版 (< 1024px)  — 電腦版 (≥1024px) 完全不受影響
+       ========================================================== */
+    .m-details summary { list-style: none; }
+    .m-details summary::-webkit-details-marker { display: none; }
+    .m-details[open] .m-chev { transform: rotate(180deg); }
+    .m-chev { transition: transform .2s; }
+
+    @media (max-width: 1023px) {
+      html, body { height: auto !important; min-height: 100%; }
+      body {
+        overflow: visible !important;
+        min-height: 100dvh;
+        touch-action: manipulation;
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+
+      /* Header：兩列式（Logo + 飛行時數 / 公告跑馬燈） */
+      #app-header { position: relative !important; height: auto !important; padding: .5rem .75rem !important; }
+      #app-header-inner { flex-wrap: wrap; gap: .5rem !important; max-width: 100% !important; }
+      #app-header img { height: 2.5rem !important; }
+      .hdr-right { order: 2; gap: .75rem !important; }
+      .hdr-marquee { order: 3; flex: 0 0 100% !important; max-width: 100% !important; margin: 0 !important; }
+      .hdr-stats { gap: .375rem !important; font-size: .75rem; }
+      .hdr-stats > div { padding: .25rem .5rem !important; }
+      .hdr-stats .text-base { font-size: .875rem !important; }
+
+      /* 主區域：改為上下堆疊、頁面自然捲動 */
+      #main-area { height: auto !important; overflow: visible !important; max-width: 100% !important; padding: .5rem !important; }
+      #main-split { flex-direction: column; height: auto !important; overflow: visible !important; gap: .75rem !important; }
+      #map-panel { width: 100% !important; height: clamp(280px, 85vw, 520px) !important; aspect-ratio: auto !important; flex: none !important; }
+      #right-col { height: auto !important; overflow: visible !important; flex: none !important; gap: .75rem !important; }
+      #data-card { flex: none !important; }
+
+      /* 地圖上的浮動面板 */
+      #map-badge-panel { top: .5rem !important; left: auto !important; right: .5rem !important; padding: .25rem .5rem !important; gap: .5rem !important; }
+      #map-year-panel  { top: auto !important; right: auto !important; left: .75rem !important; bottom: .75rem !important; }
+
+      /* 表單輸入框 16px，避免 iOS 聚焦時自動放大畫面 */
+      #flight-form input, #flight-form select,
+      #announcement-input, #map-year-select { font-size: 16px !important; }
+      #flight-form input, #flight-form select { padding-top: .5rem !important; padding-bottom: .5rem !important; }
+    }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -70,15 +116,15 @@
 
 <body class="flex flex-col h-screen overflow-hidden">
   <!-- 區塊 1：Header 頂部欄位 -->
-  <header class="sticky top-0 z-30 bg-white text-slate-800 border-b border-slate-200 px-6 py-3 shrink-0 shadow-sm h-[80px]">
-    <div class="max-w-[98vw] mx-auto flex items-center justify-between gap-4">
+  <header id="app-header" class="sticky top-0 z-30 bg-white text-slate-800 border-b border-slate-200 px-6 py-3 shrink-0 shadow-sm h-[80px]">
+    <div id="app-header-inner" class="max-w-[98vw] mx-auto flex items-center justify-between gap-4">
       <a href="#" class="flex items-center gap-3 hover:opacity-80 transition-opacity shrink-0">
         <img src="https://yukiina0917.sirv.com/Images/3335b2eb03000002ebcc.png" alt="Logo" class="h-14 w-auto object-contain">
         <span class="text-xl font-bold tracking-wide text-slate-900 hidden lg:inline">FlightLog System</span>
       </a>
 
       <!-- 跑馬燈區域 -->
-      <div class="flex-1 max-w-xl mx-2 rounded-full px-3 py-1.5 border flex items-center gap-2 overflow-hidden shadow-inner" style="background-color: #D464751A; border-color: #D4647540;">
+      <div class="hdr-marquee flex-1 max-w-xl mx-2 rounded-full px-3 py-1.5 border flex items-center gap-2 overflow-hidden shadow-inner" style="background-color: #D464751A; border-color: #D4647540;">
         <button type="button" onclick="openAnnouncementModal()" class="flex items-center gap-1 shrink-0 font-semibold text-xs px-2.5 py-0.5 rounded-full text-white shadow-sm transition-all cursor-pointer hover:opacity-90 active:scale-95" style="background-color: #D46475;" title="點擊編輯公告">
           <i data-lucide="bell" class="w-3.5 h-3.5"></i>
           <span>公告</span>
@@ -91,13 +137,13 @@
         </div>
       </div>
 
-      <div class="flex items-center gap-6 shrink-0">
+      <div class="hdr-right flex items-center gap-6 shrink-0">
         <div class="text-right border-r border-slate-200 pr-6 hidden sm:block">
           <p class="text-sm font-bold text-slate-800 tracking-wide">Pilot Capt. Yukiina</p>
           <p class="text-xs font-medium text-slate-500 tracking-normal">Type Rating A350 XWB Series</p>
         </div>
 
-        <div class="flex items-center gap-3 text-sm font-semibold">
+        <div class="hdr-stats flex items-center gap-3 text-sm font-semibold">
           <div class="bg-slate-50 px-3 py-1 rounded-lg border border-slate-200 shadow-sm">
             <span class="text-slate-500 mr-2">A359:</span>
             <span id="hours-a359" style="color: #23569d;" class="text-base font-bold">0:00</span>
@@ -112,16 +158,16 @@
   </header>
 
   <!-- 主要內容區：左右拆分版面 -->
-  <main class="max-w-[98vw] mx-auto px-4 py-4 w-full h-[calc(100vh-80px)] overflow-hidden">
-    <div class="flex gap-4 h-full w-full overflow-hidden">
+  <main id="main-area" class="max-w-[98vw] mx-auto px-4 py-4 w-full h-[calc(100vh-80px)] overflow-hidden">
+    <div id="main-split" class="flex gap-4 h-full w-full overflow-hidden">
       
       <!-- 【左側欄】：地圖區 + 足跡圖層控制與徽章控制 -->
-      <div class="aspect-square h-full shrink-0 bg-white rounded-xl border border-slate-200 p-2 shadow-sm flex flex-col overflow-hidden relative">
+      <div id="map-panel" class="aspect-square h-full shrink-0 bg-white rounded-xl border border-slate-200 p-2 shadow-sm flex flex-col overflow-hidden relative">
         <!-- 區域解鎖徽章面板 -->
-        <div class="absolute top-4 left-4 z-20 bg-white/90 backdrop-blur-md px-3 py-2 rounded-xl shadow-md border border-slate-200 text-xs flex items-center gap-3">
+        <div id="map-badge-panel" class="absolute top-4 left-4 z-20 bg-white/90 backdrop-blur-md px-3 py-2 rounded-xl shadow-md border border-slate-200 text-xs flex items-center gap-3">
           <div class="flex items-center gap-1.5 text-slate-700">
             <i data-lucide="award" class="w-4 h-4 text-amber-500"></i>
-            <span class="font-bold">解鎖徽章:</span>
+            <span class="font-bold max-sm:hidden">解鎖徽章:</span>
           </div>
           <div class="flex gap-2">
             <span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md font-semibold border border-blue-200" id="badge-airports">0 機場</span>
@@ -130,9 +176,9 @@
         </div>
 
         <!-- 年度回顧/年份篩選面板 -->
-        <div class="absolute top-4 right-4 z-20 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-md border border-slate-200 text-xs flex items-center gap-2">
+        <div id="map-year-panel" class="absolute top-4 right-4 z-20 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-md border border-slate-200 text-xs flex items-center gap-2">
           <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-500"></i>
-          <span class="font-semibold text-slate-700">回顧年份:</span>
+          <span class="font-semibold text-slate-700 max-sm:hidden">回顧年份:</span>
           <select id="map-year-select" onchange="onMapYearChange(this.value)" class="bg-slate-100 border border-slate-300 text-slate-800 rounded px-2 py-0.5 font-medium focus:outline-none text-xs">
             <option value="ALL">全部年份</option>
           </select>
@@ -142,7 +188,7 @@
       </div>
 
       <!-- 【右側欄】：數據與按鈕區 -->
-      <div class="flex-1 min-w-0 flex flex-col gap-4 h-full overflow-hidden">
+      <div id="right-col" class="flex-1 min-w-0 flex flex-col gap-4 h-full overflow-hidden">
         
         <!-- 右上：控制面板 / 按鈕區 -->
         <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm shrink-0 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -151,19 +197,19 @@
               <i data-lucide="sliders" class="w-5 h-5" style="color: #23569d;"></i>
               <span>控制面板 / 系統操作</span>
             </h2>
-            <p class="text-xs text-slate-500">在此快速新增飛行日誌紀錄或進行多格式（CSV / JSON）數據備份與匯入。</p>
+            <p class="text-xs text-slate-500 max-sm:hidden">在此快速新增飛行日誌紀錄或進行多格式（CSV / JSON）數據備份與匯入。</p>
           </div>
 
-          <div class="flex items-center gap-3 w-full sm:w-auto">
+          <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <!-- 新增飛行紀錄按鈕 -->
-            <button onclick="openCreateModal()" class="flex-1 sm:flex-none text-white font-semibold py-2.5 px-5 rounded-xl shadow-md transition-all hover:opacity-90 flex items-center justify-center gap-2 text-sm whitespace-nowrap" style="background-color: #23569d;">
+            <button onclick="openCreateModal()" class="flex-1 sm:flex-none max-sm:flex-none max-sm:w-full text-white font-semibold py-2.5 px-5 rounded-xl shadow-md transition-all hover:opacity-90 flex items-center justify-center gap-2 text-sm whitespace-nowrap" style="background-color: #23569d;">
               <i data-lucide="plus-circle" class="w-4 h-4"></i>
               <span>新增飛行紀錄</span>
             </button>
 
             <!-- 多格式匯出選單 -->
-            <div class="relative inline-block text-left">
-              <button onclick="toggleExportMenu()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-colors whitespace-nowrap">
+            <div class="relative inline-block text-left max-sm:flex-1">
+              <button onclick="toggleExportMenu()" class="max-sm:w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-colors whitespace-nowrap">
                 <i data-lucide="download" class="w-4 h-4"></i>
                 <span>匯出資料</span>
                 <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
@@ -181,7 +227,7 @@
             </div>
 
             <!-- 多格式匯入按鈕 (支援 CSV / JSON) -->
-            <label class="bg-slate-700 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap">
+            <label class="max-sm:flex-1 bg-slate-700 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap">
               <i data-lucide="upload" class="w-4 h-4"></i>
               <span>匯入資料</span>
               <input type="file" id="data-file-input" accept=".csv, .json" class="hidden" onchange="importFromFile(event)">
@@ -190,8 +236,8 @@
         </div>
 
         <!-- 右下：數據表格區 -->
-        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-md flex-1 flex flex-col min-h-0">
-          <div class="overflow-x-auto overflow-y-auto h-full w-full flex-1">
+        <div id="data-card" class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-md flex-1 flex flex-col min-h-0">
+          <div class="max-lg:hidden overflow-x-auto overflow-y-auto h-full w-full flex-1">
             <table class="w-full text-center border-collapse text-xs">
               <thead>
                 <tr style="background-color: #23569d;" class="sticky top-0 z-10 text-white border-b border-blue-900 whitespace-nowrap shadow-sm">
@@ -250,6 +296,28 @@
             </table>
           </div>
           
+
+          <!-- 📱 手機版：篩選列 + 卡片清單 (電腦版隱藏) -->
+          <div class="lg:hidden flex items-stretch gap-2 p-2 border-b border-slate-200 bg-slate-50 text-xs">
+            <label id="m-date-chip" class="relative flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 font-semibold cursor-pointer">
+              <i data-lucide="calendar" class="w-3.5 h-3.5 shrink-0"></i>
+              <span id="m-date-text" class="truncate">日期</span>
+              <input type="date" id="m-date-input" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="filterByDate(this.value)">
+            </label>
+            <button type="button" id="m-dep-chip" onclick="openDepSearchPrompt()" class="flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 font-semibold">
+              <i data-lucide="plane-takeoff" class="w-3.5 h-3.5 shrink-0"></i>
+              <span id="m-dep-text" class="truncate">出發地</span>
+            </button>
+            <button type="button" id="m-dest-chip" onclick="openDestSearchPrompt()" class="flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 font-semibold">
+              <i data-lucide="plane-landing" class="w-3.5 h-3.5 shrink-0"></i>
+              <span id="m-dest-text" class="truncate">目的地</span>
+            </button>
+            <button type="button" id="m-clear-btn" onclick="clearAllFilters()" class="hidden shrink-0 items-center justify-center px-2 rounded-lg border border-red-200 bg-red-50 text-red-500" title="清除全部篩選">
+              <i data-lucide="x-circle" class="w-4 h-4"></i>
+            </button>
+          </div>
+          <div id="flight-card-list" class="lg:hidden empty:hidden p-2 space-y-2 bg-slate-50"></div>
+
           <div id="empty-state" class="py-12 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
             <i data-lucide="plane-takeoff" class="w-10 h-10 opacity-50"></i>
             <p class="text-sm" id="empty-msg">尚無飛行紀錄，點擊按鈕新增紀錄</p>
@@ -286,8 +354,8 @@
   </div>
 
   <!-- 新增/編輯飛行紀錄 Modal -->
-  <div id="modal-overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
-    <div class="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl relative my-8">
+  <div id="modal-overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center max-lg:items-start justify-center p-4 max-sm:p-2 overflow-y-auto">
+    <div class="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl p-6 max-sm:p-4 shadow-2xl relative my-8 max-sm:my-2">
       <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
         <h3 id="modal-title" class="text-lg font-bold text-slate-800 flex items-center gap-2">
           <i data-lucide="file-plus" class="w-5 h-5" style="color: #23569d;"></i> <span>新增飛行紀錄</span>
@@ -313,7 +381,7 @@
             </select>
           </div>
         </div>
-        <div class="grid grid-cols-4 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div>
             <label class="text-xs font-medium text-slate-600 block mb-1" for="f-dep-iata">出發 IATA</label>
             <input id="f-dep-iata" type="text" placeholder="例: TPE" maxlength="3" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 uppercase focus:outline-none" oninput="autoFillICAO('dep')">
@@ -373,7 +441,7 @@
             <input id="f-fl" type="text" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none">
           </div>
         </div>
-        <div class="grid grid-cols-4 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div>
             <label class="text-xs font-medium text-slate-600 block mb-1" for="f-lspd">降落速度</label>
             <input id="f-lspd" type="number" min="0" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 focus:outline-none">
@@ -1030,6 +1098,113 @@
       }
     }
 
+
+    // ===== 📱 手機版：卡片與篩選列 =====
+    function buildFlightCard(f) {
+      const hasVal = v => v !== null && v !== undefined && v !== '';
+      const fl   = f.flight_level ? 'FL ' + formatNumber(f.flight_level) : '—';
+      const lspd = hasVal(f.landing_speed) ? `${formatNumber(f.landing_speed)} kt` : '—';
+      const lvs  = hasVal(f.landing_vs) ? `${formatNumber(f.landing_vs)} fpm` : '—';
+      const cell = (label, val) => `
+        <div class="bg-slate-50 rounded-lg px-2 py-1.5 text-center min-w-0">
+          <div class="text-[10px] text-slate-400 font-medium tracking-wide">${label}</div>
+          <div class="text-xs font-semibold text-slate-700 truncate">${val}</div>
+        </div>`;
+      const airport = (iata, icao) => `
+        <div class="text-center leading-tight">
+          <div class="text-lg font-bold text-slate-800">${iata || '—'}</div>
+          <div class="text-[10px] font-medium text-slate-400">${icao || ''}</div>
+        </div>`;
+
+      return `
+        <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-3">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="text-xs font-medium text-slate-500">${f.flight_date || '—'}</span>
+              <span class="bg-blue-50 text-blue-600 border border-blue-200 px-2 py-0.5 rounded text-xs font-semibold">${f.aircraft_type || '—'}</span>
+            </div>
+            <div class="inline-flex items-center shrink-0">
+              <button class="text-slate-400 active:text-blue-600 p-2 rounded-lg" title="編輯" onclick="editFlight('${f.id}')"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+              <button class="text-slate-400 active:text-red-500 p-2 rounded-lg" title="刪除" onclick="deleteFlight('${f.id}')"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between mt-1">
+            <div class="flex items-center gap-3">
+              ${airport(f.departure_iata, f.departure_icao)}
+              <i data-lucide="arrow-right" class="w-4 h-4 text-slate-400"></i>
+              ${airport(f.destination_iata, f.destination_icao)}
+            </div>
+            <div class="text-right">
+              <div class="text-[10px] text-slate-400 font-medium">飛行時間</div>
+              <div class="text-lg font-bold" style="color: #23569d;">${formatHoursToHM(f.flight_hours)}</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-1.5 mt-2">
+            ${cell('高度', fl)}
+            ${cell('PAX', formatNumber(f.passengers))}
+            ${cell('Cargo', formatNumber(f.cargo))}
+            ${cell('起飛重量', formatNumber(f.takeoff_weight))}
+            ${cell('降落速度', lspd)}
+            ${cell('Landing V/S', lvs)}
+          </div>
+
+          <details class="m-details mt-2">
+            <summary class="flex items-center justify-between text-xs font-semibold text-slate-500 py-1.5 cursor-pointer select-none">
+              <span>油量資訊 (TFG / TTG / ENR / REM / TFU)</span>
+              <i data-lucide="chevron-down" class="m-chev w-4 h-4"></i>
+            </summary>
+            <div class="grid grid-cols-3 gap-1.5 mt-1">
+              ${cell('TFG', formatNumber(f.tfg))}
+              ${cell('TTG', formatNumber(f.ttg))}
+              ${cell('ENR', formatNumber(f.enr))}
+              ${cell('Remaining', formatNumber(f.remaining))}
+              ${cell('TFU', formatNumber(f.tfu))}
+            </div>
+          </details>
+        </div>`;
+    }
+
+    function updateMobileFilterUI() {
+      const ACTIVE = ['border-blue-400', 'bg-blue-50', 'text-blue-700'];
+      const IDLE = ['border-slate-300', 'bg-white', 'text-slate-700'];
+      const setChip = (chipId, textId, value, idleText) => {
+        const chip = document.getElementById(chipId);
+        const text = document.getElementById(textId);
+        if (!chip || !text) return;
+        text.textContent = value || idleText;
+        ACTIVE.forEach(c => chip.classList.toggle(c, !!value));
+        IDLE.forEach(c => chip.classList.toggle(c, !value));
+      };
+      setChip('m-date-chip', 'm-date-text', selectedFilterDate, '日期');
+      setChip('m-dep-chip', 'm-dep-text', selectedFilterDep, '出發地');
+      setChip('m-dest-chip', 'm-dest-text', selectedFilterDest, '目的地');
+
+      const dateInput = document.getElementById('m-date-input');
+      if (dateInput) dateInput.value = selectedFilterDate || '';
+
+      const clearBtn = document.getElementById('m-clear-btn');
+      if (clearBtn) {
+        const any = selectedFilterDate || selectedFilterDep || selectedFilterDest;
+        clearBtn.classList.toggle('hidden', !any);
+        clearBtn.classList.toggle('flex', !!any);
+      }
+    }
+
+    function clearAllFilters() {
+      selectedFilterDate = '';
+      selectedFilterDep = '';
+      selectedFilterDest = '';
+      const d = document.getElementById('date-search-input');
+      if (d) d.value = '';
+      ['reset-date-btn', 'reset-dep-btn', 'reset-dest-btn'].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) b.classList.add('hidden');
+      });
+      renderFlights();
+    }
+
     function formatAirport(iata, icao) {
       const displayIata = iata || '—';
       const tooltipIcao = icao ? `ICAO: ${icao}` : '';
@@ -1103,6 +1278,10 @@
         `;
         tbody.appendChild(tr);
       });
+
+      // 📱 手機版卡片清單 + 篩選列狀態
+      document.getElementById('flight-card-list').innerHTML = filteredFlights.map(buildFlightCard).join('');
+      updateMobileFilterUI();
 
       const totalA359 = flights.filter(f => f.aircraft_type === 'A359').reduce((s, f) => s + (Number(f.flight_hours) || 0), 0);
       const totalA35K = flights.filter(f => f.aircraft_type === 'A35K').reduce((s, f) => s + (Number(f.flight_hours) || 0), 0);
