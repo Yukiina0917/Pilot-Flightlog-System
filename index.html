@@ -702,20 +702,34 @@
       return null;
     }
 
+    // ===== 地圖接縫(左邊界)設定 =====
+    // 地圖左邊界放在大西洋經度 -30°(不會切到南美洲,巴西最東點約 -34.8°)
+    // 地圖範圍 = [MAP_SEAM_LON, MAP_SEAM_LON + 360];美洲會出現在地圖右側
+    // 想微調紅線位置,只要改這個數字即可(例如 -28、-32)
+    const MAP_SEAM_LON = -30;
+
+    // 把任意經度換算到 [MAP_SEAM_LON, MAP_SEAM_LON + 360)
+    function wrapLon(lon) {
+      return ((((lon - MAP_SEAM_LON) % 360) + 360) % 360) + MAP_SEAM_LON;
+    }
+    function wrapCoords(c) {
+      return [c[0], wrapLon(c[1])];
+    }
+
     function initMap() {
       map = L.map('map', {
-        center: [20, 0],
+        center: [20, MAP_SEAM_LON + 180],
         zoom: 2,
         minZoom: 2,
         zoomControl: true,
-        maxBounds: [[-90, -180], [90, 180]],
+        maxBounds: [[-85, MAP_SEAM_LON], [85, MAP_SEAM_LON + 360]],
         maxBoundsViscosity: 1.0
       });
 
+      // 不使用 noWrap:底圖圖磚會自動重複,才能在 -180°~-30° 之外顯示 180°~330° 的美洲
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap',
-        maxZoom: 19,
-        noWrap: true
+        maxZoom: 19
       }).addTo(map);
 
       routeLayerGroup = L.layerGroup().addTo(map);
@@ -753,9 +767,12 @@
         const lat = Math.atan2(z, Math.sqrt(x * x + y * y));
         let lon = Math.atan2(y, x);
 
-        rawPoints.push([toDeg(lat), toDeg(lon)]);
+        // 經度換算到自訂地圖範圍 [MAP_SEAM_LON, MAP_SEAM_LON + 360)
+        rawPoints.push([toDeg(lat), wrapLon(toDeg(lon))]);
       }
 
+      const leftEdge = MAP_SEAM_LON;
+      const rightEdge = MAP_SEAM_LON + 360;
       const arcs = [];
       let currentArc = [rawPoints[0]];
 
@@ -764,8 +781,17 @@
         const curr = rawPoints[i];
 
         if (Math.abs(curr[1] - prev[1]) > 180) {
+          // 航線穿越地圖接縫:在兩側邊界插入內插點,讓線段延伸到邊緣不留缺口
+          const goingRight = prev[1] > curr[1]; // 從右邊界穿出,從左邊界進入
+          const edgeOut = goingRight ? rightEdge : leftEdge;
+          const edgeIn = goingRight ? leftEdge : rightEdge;
+          const currUnwrapped = goingRight ? curr[1] + 360 : curr[1] - 360;
+          const t = (edgeOut - prev[1]) / (currUnwrapped - prev[1]);
+          const crossLat = prev[0] + t * (curr[0] - prev[0]);
+
+          currentArc.push([crossLat, edgeOut]);
           arcs.push(currentArc);
-          currentArc = [curr];
+          currentArc = [[crossLat, edgeIn], curr];
         } else {
           currentArc.push(curr);
         }
@@ -815,8 +841,10 @@
         routeCounts[routeKey] = (routeCounts[routeKey] || 0) + 1;
 
         try {
-          const startCoords = await fetchAirportCoords(dep);
-          const endCoords = await fetchAirportCoords(dest);
+          const rawStart = await fetchAirportCoords(dep);
+          const rawEnd = await fetchAirportCoords(dest);
+          const startCoords = rawStart ? wrapCoords(rawStart) : null;
+          const endCoords = rawEnd ? wrapCoords(rawEnd) : null;
 
           if (startCoords && endCoords) {
             bounds.push(startCoords, endCoords);
@@ -842,7 +870,8 @@
       // 1. 繪製熱力圖層 (Leaflet.heat)
       const airportCodes = Object.keys(airportStats);
       for (const code of airportCodes) {
-        const coords = await fetchAirportCoords(code);
+        const rawCoords = await fetchAirportCoords(code);
+        const coords = rawCoords ? wrapCoords(rawCoords) : null;
         if (coords) {
           // 強度權重以造訪次數為基礎進行正則化
           const intensity = Math.min(airportStats[code].total / 10, 1.0);
@@ -861,8 +890,9 @@
 
       // 2. 繪製機場標記點與互動數據卡片
       for (const code of airportCodes) {
-        const coords = await fetchAirportCoords(code);
-        if (!coords) continue;
+        const rawCoords = await fetchAirportCoords(code);
+        if (!rawCoords) continue;
+        const coords = wrapCoords(rawCoords);
 
         const stat = airportStats[code];
         const topAircraft = Object.entries(stat.aircrafts)
