@@ -85,7 +85,10 @@
       .hdr-marquee { order: 3; flex: 0 0 100% !important; max-width: 100% !important; margin: 0 !important; }
       .hdr-stats { gap: .375rem !important; font-size: .75rem; }
       .hdr-stats > div { padding: .25rem .5rem !important; }
-      .hdr-stats .text-base { font-size: .875rem !important; }
+      .hdr-right { gap: .625rem !important; }
+      .hdr-stat-value { font-size: .875rem !important; }
+      .hdr-profile { padding-left: .625rem !important; gap: .5rem !important; }
+      #avatar-btn { width: 2.25rem !important; height: 2.25rem !important; }
 
       /* 主區域：改為上下堆疊、頁面自然捲動 */
       #main-area { height: auto !important; overflow: visible !important; max-width: 100% !important; padding: .5rem !important; }
@@ -146,21 +149,49 @@
         </div>
       </div>
 
-      <div class="hdr-right flex items-center gap-6 shrink-0">
-        <div class="text-right border-r border-slate-200 pr-6 hidden sm:block">
-          <p class="text-sm font-bold text-slate-800 tracking-wide">Pilot Capt. Yukiina</p>
-          <p class="text-xs font-medium text-slate-500 tracking-normal">Type Rating A350 XWB Series</p>
+      <div class="hdr-right flex items-center gap-5 shrink-0">
+        <!-- 飛行時數卡片 -->
+        <div class="hdr-stats flex items-center gap-3">
+          <div class="hdr-stat bg-slate-50 px-3.5 py-1.5 rounded-lg border border-slate-200 shadow-sm text-center">
+            <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider leading-tight">A359 HRS</p>
+            <p id="hours-a359" style="color: #23569d;" class="hdr-stat-value text-base font-bold leading-tight mt-0.5">0:00</p>
+          </div>
+          <div class="hdr-stat bg-slate-50 px-3.5 py-1.5 rounded-lg border border-slate-200 shadow-sm text-center">
+            <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider leading-tight">A35K HRS</p>
+            <p id="hours-a35k" style="color: #23569d;" class="hdr-stat-value text-base font-bold leading-tight mt-0.5">0:00</p>
+          </div>
         </div>
 
-        <div class="hdr-stats flex items-center gap-3 text-sm font-semibold">
-          <div class="bg-slate-50 px-3 py-1 rounded-lg border border-slate-200 shadow-sm">
-            <span class="text-slate-500 mr-2">A359:</span>
-            <span id="hours-a359" style="color: #23569d;" class="text-base font-bold">0:00</span>
+        <!-- 機師資訊 + 大頭貼 -->
+        <div class="hdr-profile flex items-center gap-3 border-l border-slate-200 pl-5">
+          <div class="text-right hidden sm:block">
+            <p class="text-sm font-bold text-slate-800 tracking-wide flex items-center justify-end gap-1.5">
+              <!-- 機長四條金槓(高度 16px) -->
+              <svg viewBox="7 3 30 20" class="h-4 w-auto shrink-0" role="img" aria-label="Captain 四條金槓">
+                <defs>
+                  <linearGradient id="gold-stripe" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0" stop-color="#E6C65A"/>
+                    <stop offset="0.5" stop-color="#D4AF37"/>
+                    <stop offset="1" stop-color="#B08A1E"/>
+                  </linearGradient>
+                </defs>
+                <rect x="8"  y="4" width="4" height="18" rx="0.8" fill="url(#gold-stripe)"/>
+                <rect x="16" y="4" width="4" height="18" rx="0.8" fill="url(#gold-stripe)"/>
+                <rect x="24" y="4" width="4" height="18" rx="0.8" fill="url(#gold-stripe)"/>
+                <rect x="32" y="4" width="4" height="18" rx="0.8" fill="url(#gold-stripe)"/>
+              </svg>
+              <span>Capt. Yukiina</span>
+            </p>
+            <p class="text-xs font-medium text-slate-500 tracking-normal">Type Rating A350 XWB Series</p>
           </div>
-          <div class="bg-slate-50 px-3 py-1 rounded-lg border border-slate-200 shadow-sm">
-            <span class="text-slate-500 mr-2">A35K:</span>
-            <span id="hours-a35k" style="color: #23569d;" class="text-base font-bold">0:00</span>
-          </div>
+          <button type="button" id="avatar-btn" onclick="openAvatarModal()" title="點擊更換大頭貼"
+                  class="relative w-11 h-11 rounded-full border border-slate-200 bg-slate-50 shadow-sm overflow-hidden shrink-0 flex items-center justify-center text-slate-400 hover:border-blue-400 transition-colors group">
+            <img id="avatar-img" alt="大頭貼" class="hidden w-full h-full object-cover">
+            <i id="avatar-placeholder" data-lucide="user" class="w-5 h-5"></i>
+            <span class="absolute inset-0 bg-slate-900/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+              <i data-lucide="camera" class="w-4 h-4"></i>
+            </span>
+          </button>
         </div>
       </div>
     </div>
@@ -336,6 +367,43 @@
       </div>
     </div>
   </main>
+
+  <!-- 大頭貼更換 Modal -->
+  <div id="avatar-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="w-full max-w-sm bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <i data-lucide="camera" class="w-5 h-5" style="color: #23569d;"></i>
+          <span>更換大頭貼</span>
+        </h3>
+        <button type="button" class="text-slate-400 hover:text-slate-600" onclick="closeAvatarModal()">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="flex flex-col items-center gap-4">
+        <div class="w-32 h-32 rounded-full border-2 border-slate-200 bg-slate-50 overflow-hidden flex items-center justify-center text-slate-300">
+          <img id="avatar-preview" alt="預覽" class="hidden w-full h-full object-cover">
+          <i id="avatar-preview-placeholder" data-lucide="user" class="w-14 h-14"></i>
+        </div>
+        <p class="text-xs text-slate-500 text-center">支援 JPG / PNG / WebP,會自動置中裁成正方形並壓縮</p>
+
+        <input type="file" id="avatar-file" accept="image/*" class="hidden" onchange="handleAvatarFile(event)">
+        <div class="flex gap-2 w-full">
+          <button type="button" onclick="document.getElementById('avatar-file').click()" class="flex-1 py-2 rounded-lg font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm flex items-center justify-center gap-1.5">
+            <i data-lucide="image-plus" class="w-4 h-4"></i><span>選擇照片</span>
+          </button>
+          <button type="button" id="avatar-remove-btn" onclick="removeAvatar()" class="py-2 px-3 rounded-lg font-medium bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 text-sm flex items-center justify-center gap-1.5">
+            <i data-lucide="trash-2" class="w-4 h-4"></i><span>移除</span>
+          </button>
+        </div>
+        <div class="flex gap-3 w-full">
+          <button type="button" onclick="closeAvatarModal()" class="w-1/3 py-2 rounded-lg font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm">取消</button>
+          <button type="button" id="avatar-save-btn" onclick="saveAvatar()" class="w-2/3 py-2 rounded-lg font-medium transition-colors hover:opacity-90 text-white text-sm" style="background-color: #23569d;">儲存</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- 公告編輯 Modal -->
   <div id="announcement-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
@@ -676,6 +744,146 @@
         closeAnnouncementModal();
       } catch (err) {
         alert('儲存公告失敗：' + err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ===== 大頭貼功能 =====
+    // 圖片會置中裁切成 256x256 的 JPEG(約 15~40KB),以 base64 存到 Firestore: settings/profile
+    // 同時快取在 localStorage,重新整理時能立即顯示、不閃爍
+    const AVATAR_LS_KEY = 'flightlog_avatar';
+    const AVATAR_SIZE = 256;
+    let currentAvatar = '';   // 目前已儲存的大頭貼 (data URL 或空字串)
+    let pendingAvatar = null; // Modal 中尚未儲存的選擇;null = 沒有變更,'' = 要移除
+
+    function renderAvatar(dataUrl) {
+      const img = document.getElementById('avatar-img');
+      const ph = document.getElementById('avatar-placeholder');
+      if (dataUrl) {
+        img.src = dataUrl;
+        img.classList.remove('hidden');
+        ph.classList.add('hidden');
+      } else {
+        img.removeAttribute('src');
+        img.classList.add('hidden');
+        ph.classList.remove('hidden');
+      }
+    }
+
+    function renderAvatarPreview(dataUrl) {
+      const img = document.getElementById('avatar-preview');
+      const ph = document.getElementById('avatar-preview-placeholder');
+      if (dataUrl) {
+        img.src = dataUrl;
+        img.classList.remove('hidden');
+        ph.classList.add('hidden');
+      } else {
+        img.removeAttribute('src');
+        img.classList.add('hidden');
+        ph.classList.remove('hidden');
+      }
+    }
+
+    function initAvatar() {
+      try {
+        const cached = localStorage.getItem(AVATAR_LS_KEY);
+        if (cached) { currentAvatar = cached; renderAvatar(cached); }
+      } catch (e) {}
+
+      db.collection("settings").doc("profile").onSnapshot((doc) => {
+        const remote = (doc.exists && doc.data().avatar) ? doc.data().avatar : '';
+        // 雲端沒資料時,保留本機快取(例如先前只存在本機的情況)
+        if (!remote && currentAvatar && !doc.exists) return;
+        currentAvatar = remote;
+        renderAvatar(remote);
+        try {
+          if (remote) localStorage.setItem(AVATAR_LS_KEY, remote);
+          else localStorage.removeItem(AVATAR_LS_KEY);
+        } catch (e) {}
+        lucide.createIcons();
+      }, (err) => {
+        console.error('大頭貼監聽失敗:', err);
+      });
+    }
+
+    function openAvatarModal() {
+      pendingAvatar = null;
+      document.getElementById('avatar-file').value = '';
+      renderAvatarPreview(currentAvatar);
+      document.getElementById('avatar-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeAvatarModal() {
+      document.getElementById('avatar-modal').classList.add('hidden');
+      pendingAvatar = null;
+    }
+
+    function handleAvatarFile(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      if (!file.type.startsWith('image/')) return alert('請選擇圖片檔案');
+
+      const reader = new FileReader();
+      reader.onerror = () => alert('讀取檔案失敗,請重試');
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => alert('無法讀取這張圖片,請改用 JPG / PNG / WebP 格式');
+        img.onload = () => {
+          // 置中裁切成正方形
+          const side = Math.min(img.width, img.height);
+          const sx = (img.width - side) / 2;
+          const sy = (img.height - side) / 2;
+          const canvas = document.createElement('canvas');
+          canvas.width = AVATAR_SIZE;
+          canvas.height = AVATAR_SIZE;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff'; // PNG 透明背景轉白底
+          ctx.fillRect(0, 0, AVATAR_SIZE, AVATAR_SIZE);
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, sx, sy, side, side, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
+          pendingAvatar = canvas.toDataURL('image/jpeg', 0.85);
+          renderAvatarPreview(pendingAvatar);
+          lucide.createIcons();
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeAvatar() {
+      pendingAvatar = '';
+      document.getElementById('avatar-file').value = '';
+      renderAvatarPreview('');
+      lucide.createIcons();
+    }
+
+    async function saveAvatar() {
+      if (pendingAvatar === null) return closeAvatarModal(); // 沒有變更
+      const btn = document.getElementById('avatar-save-btn');
+      const newAvatar = pendingAvatar;
+      btn.disabled = true;
+
+      // 先本機立即生效
+      currentAvatar = newAvatar;
+      renderAvatar(newAvatar);
+      try {
+        if (newAvatar) localStorage.setItem(AVATAR_LS_KEY, newAvatar);
+        else localStorage.removeItem(AVATAR_LS_KEY);
+      } catch (e) {}
+
+      // 再同步到雲端
+      try {
+        await db.collection("settings").doc("profile").set({
+          avatar: newAvatar,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        closeAvatarModal();
+      } catch (err) {
+        console.error(err);
+        alert('大頭貼已儲存在此裝置,但雲端同步失敗:' + err.message + '\n(請檢查 Firestore 規則是否允許讀寫 settings 集合)');
+        closeAvatarModal();
       } finally {
         btn.disabled = false;
       }
@@ -1532,6 +1740,7 @@
       initMap();
       initFirestoreListener();
       initAnnouncementListener();
+      initAvatar();
       lucide.createIcons();
     };
 
