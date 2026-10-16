@@ -472,6 +472,7 @@
         </h3>
         <div class="flex items-center gap-3">
           <select id="stats-year" onchange="onStatsYearChange(this.value)" class="bg-slate-100 border border-slate-300 text-slate-800 text-sm rounded-md px-2 py-1 focus:outline-none"></select>
+          <select id="stats-month" onchange="onStatsMonthChange(this.value)" class="hidden bg-slate-100 border border-slate-300 text-slate-800 text-sm rounded-md px-2 py-1 focus:outline-none"></select>
           <button type="button" class="text-slate-400 hover:text-slate-600" onclick="closeStats()" title="關閉"><i data-lucide="x" class="w-5 h-5"></i></button>
         </div>
       </div>
@@ -2125,7 +2126,7 @@
     }
 
     // ===== 飛行統計 =====
-    let statsYear = 'all', statsToken = 0;
+    let statsYear = 'all', statsMonth = 'all', statsToken = 0;
 
     function openStats() {
       const sel = document.getElementById('stats-year');
@@ -2133,12 +2134,23 @@
       sel.innerHTML = '<option value="all">全部年份</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
       if (!years.includes(statsYear)) statsYear = 'all';
       sel.value = statsYear;
+      fillStatsMonths();
       document.getElementById('stats-modal').classList.remove('hidden');
       renderStats();
       lucide.createIcons();
     }
     function closeStats() { document.getElementById('stats-modal').classList.add('hidden'); statsToken++; }
-    function onStatsYearChange(v) { statsYear = v; renderStats(); }
+    function fillStatsMonths() {
+      const sel = document.getElementById('stats-month');
+      if (statsYear === 'all') { statsMonth = 'all'; sel.classList.add('hidden'); return; }
+      const months = [...new Set(flights.filter(f => (f.flight_date || '').startsWith(statsYear)).map(f => (f.flight_date || '').slice(5, 7)).filter(Boolean))].sort();
+      sel.innerHTML = '<option value="all">全部月份</option>' + months.map(m => `<option value="${m}">${Number(m)} 月</option>`).join('');
+      if (!months.includes(statsMonth)) statsMonth = 'all';
+      sel.value = statsMonth;
+      sel.classList.remove('hidden');
+    }
+    function onStatsYearChange(v) { statsYear = v; statsMonth = 'all'; fillStatsMonths(); renderStats(); }
+    function onStatsMonthChange(v) { statsMonth = v; renderStats(); }
 
     function statRow(label, pct, right) {
       return `<div class="flex items-center gap-2 text-xs py-1">
@@ -2158,7 +2170,8 @@
 
     async function renderStats() {
       const body = document.getElementById('stats-body');
-      const list = statsYear === 'all' ? flights : flights.filter(f => (f.flight_date || '').startsWith(statsYear));
+      const prefix = statsYear === 'all' ? '' : (statsMonth === 'all' ? statsYear : `${statsYear}-${statsMonth}`);
+      const list = prefix ? flights.filter(f => (f.flight_date || '').startsWith(prefix)) : flights;
       const myToken = ++statsToken;
       if (!list.length) { body.innerHTML = '<p class="text-sm text-slate-400 text-center py-10">這段期間沒有飛行紀錄</p>'; return; }
 
@@ -2174,16 +2187,24 @@
       const airports = Object.keys(airportCount);
       const countries = new Set(airports.map(c => AIRPORT_COUNTRY[c] || '未知地區'));
 
-      // 時數長條圖:全部年份 → 依年;單一年份 → 依月
+      // 時數長條圖:全部年份 → 依年;單一年份 → 依月;單一月份 → 依日
+      const mode = statsYear === 'all' ? 'year' : (statsMonth === 'all' ? 'month' : 'day');
       const buckets = {};
-      if (statsYear === 'all') list.forEach(f => { const y = (f.flight_date || '').slice(0, 4); if (y) buckets[y] = (buckets[y] || 0) + hrs(f); });
-      else { for (let m = 1; m <= 12; m++) buckets[String(m).padStart(2, '0')] = 0; list.forEach(f => { const m = (f.flight_date || '').slice(5, 7); if (m in buckets) buckets[m] += hrs(f); }); }
+      if (mode === 'year') list.forEach(f => { const y = (f.flight_date || '').slice(0, 4); if (y) buckets[y] = (buckets[y] || 0) + hrs(f); });
+      else if (mode === 'month') { for (let m = 1; m <= 12; m++) buckets[String(m).padStart(2, '0')] = 0; list.forEach(f => { const m = (f.flight_date || '').slice(5, 7); if (m in buckets) buckets[m] += hrs(f); }); }
+      else { const dim = new Date(Number(statsYear), Number(statsMonth), 0).getDate(); for (let d = 1; d <= dim; d++) buckets[String(d).padStart(2, '0')] = 0; list.forEach(f => { const d = (f.flight_date || '').slice(8, 10); if (d in buckets) buckets[d] += hrs(f); }); }
       const bKeys = Object.keys(buckets).sort(), bMax = Math.max(...Object.values(buckets), 0.01);
-      const bars = bKeys.map(k => `<div class="flex-1 flex flex-col items-center justify-end h-full min-w-0" title="${statsYear === 'all' ? k : k + ' 月'}:${formatHoursToHM(buckets[k])}">
-          <span class="text-[10px] font-semibold text-slate-500 mb-0.5 max-sm:hidden">${buckets[k] ? Math.round(buckets[k]) : ''}</span>
+      const tip = k => mode === 'year' ? k : mode === 'month' ? `${Number(k)} 月` : `${Number(statsMonth)} 月 ${Number(k)} 日`;
+      const bars = bKeys.map(k => `<div class="flex-1 flex flex-col items-center justify-end h-full min-w-0" title="${tip(k)}:${formatHoursToHM(buckets[k])}">
+          <span class="text-[10px] font-semibold text-slate-500 mb-0.5 max-sm:hidden ${mode === 'day' ? 'sm:hidden' : ''}">${buckets[k] ? Math.round(buckets[k]) : ''}</span>
           <div class="w-full max-w-[28px] rounded-t" style="height:${buckets[k] ? Math.max(buckets[k] / bMax * 100, 3) : 0}%; background:#23569d;"></div>
-        </div><!-- -->`).join('');
-      const labels = bKeys.map(k => `<div class="flex-1 text-center text-[10px] text-slate-500 min-w-0">${statsYear === 'all' ? k : Number(k)}</div>`).join('');
+        </div>`).join('');
+      const labels = bKeys.map(k => {
+        const n = Number(k);
+        const text = mode === 'year' ? k : (mode === 'day' && n !== 1 && n % 5 !== 0 ? '' : n);
+        return `<div class="flex-1 text-center text-[10px] text-slate-500 min-w-0">${text}</div>`;
+      }).join('');
+      const chartTitle = mode === 'year' ? '每年飛行時數(小時)' : mode === 'month' ? `${statsYear} 年每月飛行時數(小時)` : `${statsYear} 年 ${Number(statsMonth)} 月每日飛行時數(小時)`;
 
       const typeEntries = Object.entries(typeHours).sort((a, b) => b[1] - a[1]);
       const topAirports = Object.entries(airportCount).sort((a, b) => b[1] - a[1]).slice(0, 10);
@@ -2195,7 +2216,7 @@
 
       body.innerHTML =
         `<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">${card('飛行次數', list.length)}${card('總時數', formatHoursToHM(totalHours))}${card('機場', airports.length)}${card('國家/地區', countries.size)}</div>`
-        + statSection(statsYear === 'all' ? '每年飛行時數(小時)' : statsYear + ' 年每月飛行時數(小時)',
+        + statSection(chartTitle,
             `<div class="flex items-end gap-1 h-36 border-b border-slate-200">${bars}</div><div class="flex gap-1 mt-1">${labels}</div>`)
         + statSection('機型時數分佈', typeEntries.map(([t, h]) => statRow(t, h / typeEntries[0][1] * 100, `${formatHoursToHM(h)} · ${Math.round(h / totalHours * 100)}%`)).join(''))
         + statSection('機場排行(起降次數)', topAirports.map(([c, n]) => statRow(c, n / topAirports[0][1] * 100, n + ' 次')).join(''))
