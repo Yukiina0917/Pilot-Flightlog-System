@@ -84,13 +84,15 @@
     #announcement-modal:not(.hidden),
     #modal-overlay:not(.hidden),
     #profile-modal:not(.hidden),
+    #stats-modal:not(.hidden),
     #login-overlay:not(.hidden) {
       animation: overlayIn .22s ease both;
     }
     #avatar-modal:not(.hidden) > div,
     #announcement-modal:not(.hidden) > div,
     #modal-overlay:not(.hidden) > div,
-    #profile-modal:not(.hidden) > div {
+    #profile-modal:not(.hidden) > div,
+    #stats-modal:not(.hidden) > div {
       animation: modalPopIn .35s cubic-bezier(.34, 1.35, .64, 1) both;
     }
 
@@ -122,7 +124,7 @@
     @media (prefers-reduced-motion: reduce) {
       #avatar-modal:not(.hidden), #announcement-modal:not(.hidden), #modal-overlay:not(.hidden),
       #avatar-modal:not(.hidden) > div, #announcement-modal:not(.hidden) > div, #modal-overlay:not(.hidden) > div,
-      #profile-modal:not(.hidden), #login-overlay:not(.hidden), #profile-modal:not(.hidden) > div,
+      #profile-modal:not(.hidden), #stats-modal:not(.hidden), #login-overlay:not(.hidden), #profile-modal:not(.hidden) > div, #stats-modal:not(.hidden) > div,
       #export-dropdown:not(.hidden) { animation: none; }
       button.ctl-btn:hover, label.ctl-btn:hover, button.ctl-btn:active, label.ctl-btn:active { transform: none; }
     }
@@ -335,6 +337,11 @@
               <span>新增飛行紀錄</span>
             </button>
 
+            <button onclick="openStats()" class="ctl-btn max-sm:w-full bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 font-semibold py-2.5 px-5 rounded-xl shadow-md flex items-center justify-center gap-2 text-sm whitespace-nowrap">
+              <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+              <span>統計</span>
+            </button>
+
             <!-- 多格式匯出選單 -->
             <div class="relative inline-block text-left max-sm:flex-1">
               <button onclick="toggleExportMenu()" class="ctl-btn max-sm:w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-colors whitespace-nowrap">
@@ -455,6 +462,22 @@
       </div>
     </div>
   </main>
+
+  <!-- 統計 Modal -->
+  <div id="stats-modal" onclick="if(event.target===this)closeStats()" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-start justify-center p-4 max-sm:p-2 overflow-y-auto">
+    <div class="w-full max-w-3xl bg-white border border-slate-200 rounded-2xl p-6 max-sm:p-4 shadow-2xl my-6 max-sm:my-2">
+      <div class="flex items-center justify-between gap-3 mb-4 border-b border-slate-100 pb-3">
+        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <i data-lucide="bar-chart-3" class="w-5 h-5" style="color: #23569d;"></i><span>飛行統計</span>
+        </h3>
+        <div class="flex items-center gap-3">
+          <select id="stats-year" onchange="onStatsYearChange(this.value)" class="bg-slate-100 border border-slate-300 text-slate-800 text-sm rounded-md px-2 py-1 focus:outline-none"></select>
+          <button type="button" class="text-slate-400 hover:text-slate-600" onclick="closeStats()" title="關閉"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+      </div>
+      <div id="stats-body"></div>
+    </div>
+  </div>
 
   <!-- 登入畫面 -->
   <div id="login-overlay" class="fixed inset-0 z-[100] bg-slate-50 flex items-center justify-center p-4">
@@ -2096,8 +2119,101 @@
       initAvatar();
       initResume();
       initCropEvents();
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeStats(); });
       lucide.createIcons();
       checkLegacy();
+    }
+
+    // ===== 飛行統計 =====
+    let statsYear = 'all', statsToken = 0;
+
+    function openStats() {
+      const sel = document.getElementById('stats-year');
+      const years = [...new Set(flights.map(f => (f.flight_date || '').slice(0, 4)).filter(Boolean))].sort().reverse();
+      sel.innerHTML = '<option value="all">全部年份</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
+      if (!years.includes(statsYear)) statsYear = 'all';
+      sel.value = statsYear;
+      document.getElementById('stats-modal').classList.remove('hidden');
+      renderStats();
+      lucide.createIcons();
+    }
+    function closeStats() { document.getElementById('stats-modal').classList.add('hidden'); statsToken++; }
+    function onStatsYearChange(v) { statsYear = v; renderStats(); }
+
+    function statRow(label, pct, right) {
+      return `<div class="flex items-center gap-2 text-xs py-1">
+        <span class="w-16 shrink-0 font-semibold text-slate-700 truncate" title="${label}">${label}</span>
+        <div class="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${Math.max(pct, 1.5)}%; background:#23569d;"></div></div>
+        <span class="w-24 shrink-0 text-right font-bold" style="color:#23569d;">${right}</span>
+      </div>`;
+    }
+    function statSection(title, inner) {
+      return `<div class="mb-6"><div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">${title}</div>${inner}</div>`;
+    }
+    function distKm(a, b) {
+      const r = x => x * Math.PI / 180, R = 6371;
+      const h = Math.sin(r(b[0] - a[0]) / 2) ** 2 + Math.cos(r(a[0])) * Math.cos(r(b[0])) * Math.sin(r(b[1] - a[1]) / 2) ** 2;
+      return 2 * R * Math.asin(Math.sqrt(h));
+    }
+
+    async function renderStats() {
+      const body = document.getElementById('stats-body');
+      const list = statsYear === 'all' ? flights : flights.filter(f => (f.flight_date || '').startsWith(statsYear));
+      const myToken = ++statsToken;
+      if (!list.length) { body.innerHTML = '<p class="text-sm text-slate-400 text-center py-10">這段期間沒有飛行紀錄</p>'; return; }
+
+      const hrs = f => Number(f.flight_hours) || 0;
+      const totalHours = list.reduce((s, f) => s + hrs(f), 0);
+      const airportCount = {}, routeCount = {}, typeHours = {};
+      list.forEach(f => {
+        const d = (f.departure_iata || '').toUpperCase(), a = (f.destination_iata || '').toUpperCase();
+        [d, a].forEach(c => { if (c) airportCount[c] = (airportCount[c] || 0) + 1; });
+        if (d && a) { const k = [d, a].sort().join('⇄'); routeCount[k] = (routeCount[k] || 0) + 1; }
+        const t = f.aircraft_type || '未知'; typeHours[t] = (typeHours[t] || 0) + hrs(f);
+      });
+      const airports = Object.keys(airportCount);
+      const countries = new Set(airports.map(c => AIRPORT_COUNTRY[c] || '未知地區'));
+
+      // 時數長條圖:全部年份 → 依年;單一年份 → 依月
+      const buckets = {};
+      if (statsYear === 'all') list.forEach(f => { const y = (f.flight_date || '').slice(0, 4); if (y) buckets[y] = (buckets[y] || 0) + hrs(f); });
+      else { for (let m = 1; m <= 12; m++) buckets[String(m).padStart(2, '0')] = 0; list.forEach(f => { const m = (f.flight_date || '').slice(5, 7); if (m in buckets) buckets[m] += hrs(f); }); }
+      const bKeys = Object.keys(buckets).sort(), bMax = Math.max(...Object.values(buckets), 0.01);
+      const bars = bKeys.map(k => `<div class="flex-1 flex flex-col items-center justify-end h-full min-w-0" title="${statsYear === 'all' ? k : k + ' 月'}:${formatHoursToHM(buckets[k])}">
+          <span class="text-[10px] font-semibold text-slate-500 mb-0.5 max-sm:hidden">${buckets[k] ? Math.round(buckets[k]) : ''}</span>
+          <div class="w-full max-w-[28px] rounded-t" style="height:${buckets[k] ? Math.max(buckets[k] / bMax * 100, 3) : 0}%; background:#23569d;"></div>
+        </div><!-- -->`).join('');
+      const labels = bKeys.map(k => `<div class="flex-1 text-center text-[10px] text-slate-500 min-w-0">${statsYear === 'all' ? k : Number(k)}</div>`).join('');
+
+      const typeEntries = Object.entries(typeHours).sort((a, b) => b[1] - a[1]);
+      const topAirports = Object.entries(airportCount).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      const topRoutes = Object.entries(routeCount).sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+      const card = (label, value) => `<div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-center">
+        <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">${label}</div>
+        <div class="text-xl font-bold mt-0.5" style="color:#23569d;">${value}</div></div>`;
+
+      body.innerHTML =
+        `<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">${card('飛行次數', list.length)}${card('總時數', formatHoursToHM(totalHours))}${card('機場', airports.length)}${card('國家/地區', countries.size)}</div>`
+        + statSection(statsYear === 'all' ? '每年飛行時數(小時)' : statsYear + ' 年每月飛行時數(小時)',
+            `<div class="flex items-end gap-1 h-36 border-b border-slate-200">${bars}</div><div class="flex gap-1 mt-1">${labels}</div>`)
+        + statSection('機型時數分佈', typeEntries.map(([t, h]) => statRow(t, h / typeEntries[0][1] * 100, `${formatHoursToHM(h)} · ${Math.round(h / totalHours * 100)}%`)).join(''))
+        + statSection('機場排行(起降次數)', topAirports.map(([c, n]) => statRow(c, n / topAirports[0][1] * 100, n + ' 次')).join(''))
+        + statSection('最常飛的航線', topRoutes.map(([r, n]) => statRow(r, n / topRoutes[0][1] * 100, n + ' 次')).join(''))
+        + statSection('最長 / 最短航程', '<div id="stats-distance" class="text-xs text-slate-400">計算中...</div>');
+
+      // 航程距離(用機場座標算大圓距離;查不到座標的航線會略過)
+      const codes = [...new Set(Object.keys(routeCount).flatMap(r => r.split('⇄')))];
+      const coords = {};
+      await Promise.all(codes.map(async c => { try { coords[c] = await fetchAirportCoords(c); } catch (e) {} }));
+      if (myToken !== statsToken) return;
+      const dists = Object.keys(routeCount).map(r => { const [a, b] = r.split('⇄'); return coords[a] && coords[b] ? { r, km: distKm(coords[a], coords[b]) } : null; }).filter(Boolean).sort((x, y) => y.km - x.km);
+      const box = document.getElementById('stats-distance');
+      if (!box) return;
+      box.className = '';
+      box.innerHTML = dists.length
+        ? [['最長', dists[0]], ['最短', dists[dists.length - 1]]].map(([t, d]) => `<div class="flex items-center justify-between text-sm py-1.5 border-b border-slate-100"><span class="text-slate-500">${t}</span><span class="font-semibold text-slate-700">${d.r}</span><span class="font-bold" style="color:#23569d;">${Math.round(d.km).toLocaleString()} km</span></div>`).join('')
+        : '<p class="text-xs text-slate-400">查不到這些機場的座標,無法計算航程</p>';
     }
 
     // ===== 個人資料 =====
