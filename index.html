@@ -82,12 +82,15 @@
     }
     #avatar-modal:not(.hidden),
     #announcement-modal:not(.hidden),
-    #modal-overlay:not(.hidden) {
+    #modal-overlay:not(.hidden),
+    #profile-modal:not(.hidden),
+    #login-overlay:not(.hidden) {
       animation: overlayIn .22s ease both;
     }
     #avatar-modal:not(.hidden) > div,
     #announcement-modal:not(.hidden) > div,
-    #modal-overlay:not(.hidden) > div {
+    #modal-overlay:not(.hidden) > div,
+    #profile-modal:not(.hidden) > div {
       animation: modalPopIn .35s cubic-bezier(.34, 1.35, .64, 1) both;
     }
 
@@ -119,6 +122,7 @@
     @media (prefers-reduced-motion: reduce) {
       #avatar-modal:not(.hidden), #announcement-modal:not(.hidden), #modal-overlay:not(.hidden),
       #avatar-modal:not(.hidden) > div, #announcement-modal:not(.hidden) > div, #modal-overlay:not(.hidden) > div,
+      #profile-modal:not(.hidden), #login-overlay:not(.hidden), #profile-modal:not(.hidden) > div,
       #export-dropdown:not(.hidden) { animation: none; }
       button.ctl-btn:hover, label.ctl-btn:hover, button.ctl-btn:active, label.ctl-btn:active { transform: none; }
     }
@@ -507,11 +511,15 @@
       </div>
 
       <div class="flex flex-col items-center gap-4">
-        <div class="w-32 h-32 rounded-full border-2 border-slate-200 bg-slate-50 overflow-hidden flex items-center justify-center text-slate-300">
+        <div id="avatar-preview-wrap" class="w-32 h-32 rounded-full border-2 border-slate-200 bg-slate-50 overflow-hidden flex items-center justify-center text-slate-300">
           <img id="avatar-preview" alt="預覽" class="hidden w-full h-full object-cover">
           <i id="avatar-preview-placeholder" data-lucide="user" class="w-14 h-14"></i>
         </div>
-        <p class="text-xs text-slate-500 text-center">支援 JPG / PNG / WebP,會自動置中裁成正方形並壓縮</p>
+        <div id="avatar-crop" class="hidden flex flex-col items-center gap-2 w-full">
+          <canvas id="crop-canvas" width="240" height="240" class="rounded-xl bg-slate-100 cursor-grab touch-none max-w-full"></canvas>
+          <input type="range" id="crop-zoom" min="1" max="3" step="0.01" value="1" class="w-full" aria-label="縮放">
+        </div>
+        <p id="avatar-hint" class="text-xs text-slate-500 text-center">支援 JPG / PNG / WebP。選好照片後,可拖曳調整位置、用滑桿縮放</p>
 
         <input type="file" id="avatar-file" accept="image/*" class="hidden" onchange="handleAvatarFile(event)">
         <div class="flex gap-2 w-full">
@@ -1033,6 +1041,7 @@
     function openAvatarModal() {
       pendingAvatar = null;
       document.getElementById('avatar-file').value = '';
+      hideCrop();
       renderAvatarPreview(currentAvatar);
       document.getElementById('avatar-modal').classList.remove('hidden');
       lucide.createIcons();
@@ -1041,6 +1050,89 @@
     function closeAvatarModal() {
       document.getElementById('avatar-modal').classList.add('hidden');
       pendingAvatar = null;
+    }
+
+    // ----- 裁切:拖曳移動、滑桿縮放,圓圈內就是最後的大頭貼範圍 -----
+    const CROP_V = 240;
+    let cropImg = null, cropMin = 1, cropScale = 1, cropX = 0, cropY = 0;
+
+    function cropClamp() {
+      const w = cropImg.width * cropScale, h = cropImg.height * cropScale;
+      cropX = Math.min(0, Math.max(CROP_V - w, cropX));
+      cropY = Math.min(0, Math.max(CROP_V - h, cropY));
+    }
+
+    function cropRender() {
+      const c = document.getElementById('crop-canvas'), ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, CROP_V, CROP_V);
+      ctx.drawImage(cropImg, cropX, cropY, cropImg.width * cropScale, cropImg.height * cropScale);
+      ctx.save();
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.55)';
+      ctx.beginPath();
+      ctx.rect(0, 0, CROP_V, CROP_V);
+      ctx.arc(CROP_V / 2, CROP_V / 2, CROP_V / 2 - 1, 0, Math.PI * 2, true);
+      ctx.fill('evenodd');
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(CROP_V / 2, CROP_V / 2, CROP_V / 2 - 1, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function cropExport() {
+      const k = AVATAR_SIZE / CROP_V;
+      const out = document.createElement('canvas');
+      out.width = AVATAR_SIZE; out.height = AVATAR_SIZE;
+      const ctx = out.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, AVATAR_SIZE, AVATAR_SIZE);
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(cropImg, cropX * k, cropY * k, cropImg.width * cropScale * k, cropImg.height * cropScale * k);
+      pendingAvatar = out.toDataURL('image/jpeg', 0.85);
+    }
+
+    function cropSetZoom(z) {
+      const old = cropScale;
+      cropScale = cropMin * z;
+      const cx = (CROP_V / 2 - cropX) / old, cy = (CROP_V / 2 - cropY) / old; // 以圓心為縮放中心
+      cropX = CROP_V / 2 - cx * cropScale;
+      cropY = CROP_V / 2 - cy * cropScale;
+      cropClamp(); cropRender(); cropExport();
+    }
+
+    function showCrop() {
+      document.getElementById('avatar-preview-wrap').classList.add('hidden');
+      document.getElementById('avatar-crop').classList.remove('hidden');
+    }
+    function hideCrop() {
+      cropImg = null;
+      document.getElementById('avatar-crop').classList.add('hidden');
+      document.getElementById('avatar-preview-wrap').classList.remove('hidden');
+    }
+
+    function initCropEvents() {
+      const c = document.getElementById('crop-canvas');
+      let drag = null;
+      c.addEventListener('pointerdown', (e) => { if (!cropImg) return; drag = { x: e.clientX, y: e.clientY }; c.setPointerCapture(e.pointerId); c.style.cursor = 'grabbing'; });
+      c.addEventListener('pointermove', (e) => {
+        if (!drag || !cropImg) return;
+        const r = c.getBoundingClientRect(), f = CROP_V / r.width; // 畫布被縮小顯示時換算比例
+        cropX += (e.clientX - drag.x) * f; cropY += (e.clientY - drag.y) * f;
+        drag = { x: e.clientX, y: e.clientY };
+        cropClamp(); cropRender();
+      });
+      const end = () => { if (drag) { drag = null; c.style.cursor = 'grab'; cropExport(); } };
+      c.addEventListener('pointerup', end);
+      c.addEventListener('pointercancel', end);
+      c.addEventListener('wheel', (e) => {
+        if (!cropImg) return;
+        e.preventDefault();
+        const z = document.getElementById('crop-zoom');
+        z.value = Math.min(3, Math.max(1, Number(z.value) - e.deltaY * 0.002));
+        cropSetZoom(Number(z.value));
+      }, { passive: false });
+      document.getElementById('crop-zoom').addEventListener('input', (e) => { if (cropImg) cropSetZoom(Number(e.target.value)); });
     }
 
     function handleAvatarFile(e) {
@@ -1054,21 +1146,13 @@
         const img = new Image();
         img.onerror = () => alert('無法讀取這張圖片,請改用 JPG / PNG / WebP 格式');
         img.onload = () => {
-          // 置中裁切成正方形
-          const side = Math.min(img.width, img.height);
-          const sx = (img.width - side) / 2;
-          const sy = (img.height - side) / 2;
-          const canvas = document.createElement('canvas');
-          canvas.width = AVATAR_SIZE;
-          canvas.height = AVATAR_SIZE;
-          const ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#ffffff'; // PNG 透明背景轉白底
-          ctx.fillRect(0, 0, AVATAR_SIZE, AVATAR_SIZE);
-          ctx.imageSmoothingQuality = 'high';
-          ctx.drawImage(img, sx, sy, side, side, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
-          pendingAvatar = canvas.toDataURL('image/jpeg', 0.85);
-          renderAvatarPreview(pendingAvatar);
-          lucide.createIcons();
+          cropImg = img;
+          cropMin = Math.max(CROP_V / img.width, CROP_V / img.height); // 剛好蓋滿裁切框
+          cropScale = cropMin;
+          cropX = (CROP_V - img.width * cropScale) / 2;
+          cropY = (CROP_V - img.height * cropScale) / 2;
+          document.getElementById('crop-zoom').value = 1;
+          showCrop(); cropRender(); cropExport();
         };
         img.src = reader.result;
       };
@@ -1078,6 +1162,7 @@
     function removeAvatar() {
       pendingAvatar = '';
       document.getElementById('avatar-file').value = '';
+      hideCrop();
       renderAvatarPreview('');
       lucide.createIcons();
     }
@@ -2010,6 +2095,7 @@
       initAnnouncementListener();
       initAvatar();
       initResume();
+      initCropEvents();
       lucide.createIcons();
       checkLegacy();
     }
