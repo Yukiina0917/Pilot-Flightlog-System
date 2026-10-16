@@ -96,6 +96,19 @@
       animation: modalPopIn .35s cubic-bezier(.34, 1.35, .64, 1) both;
     }
 
+    /* 視窗關閉動畫 */
+    @keyframes overlayOut { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes modalPopOut {
+      from { opacity: 1; transform: none; }
+      to   { opacity: 0; transform: translateY(10px) scale(0.96); }
+    }
+    :is(#avatar-modal, #profile-modal, #stats-modal, #announcement-modal, #modal-overlay).is-closing {
+      animation: overlayOut .18s ease both; pointer-events: none;
+    }
+    :is(#avatar-modal, #profile-modal, #stats-modal, #announcement-modal, #modal-overlay).is-closing > div {
+      animation: modalPopOut .18s ease both;
+    }
+
     /* 匯出下拉選單展開動畫 */
     @keyframes dropdownIn {
       from { opacity: 0; transform: translateY(-6px) scale(0.94); }
@@ -255,7 +268,7 @@
             </p>
             <p id="typerating-text" class="text-xs font-medium text-slate-500 tracking-normal"></p>
           </div>
-          <button type="button" id="avatar-btn" onclick="openAvatarModal()" title="點擊更換大頭貼"
+          <button type="button" id="avatar-btn" onclick="onAvatarClick()" title="點擊更換大頭貼"
                   class="relative w-11 h-11 rounded-full border border-slate-200 bg-slate-50 shadow-sm overflow-hidden shrink-0 flex items-center justify-center text-slate-400 hover:border-blue-400 transition-colors group">
             <img id="avatar-img" alt="大頭貼" class="hidden w-full h-full object-cover">
             <i id="avatar-placeholder" data-lucide="user" class="w-5 h-5"></i>
@@ -277,7 +290,8 @@
             </div>
             <div id="resume-body"></div>
             <div class="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-              <button type="button" onclick="closeResume(); openProfileModal(false)" class="text-slate-500 hover:text-slate-800 font-medium">編輯個人資料</button>
+              <button type="button" onclick="closeResume(); openProfileModal(false)" class="text-slate-500 hover:text-slate-800 font-medium">編輯資料</button>
+              <button type="button" onclick="closeResume(); openAvatarModal()" class="text-slate-500 hover:text-slate-800 font-medium">換大頭貼</button>
               <button type="button" onclick="auth.signOut()" class="text-slate-500 hover:text-red-600 font-medium">登出</button>
             </div>
             <button type="button" id="migrate-btn" onclick="migrateLegacy()" class="hidden mt-2 w-full py-1.5 rounded-lg text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100">搬移舊資料到我的帳號(一次性)</button>
@@ -293,6 +307,10 @@
       
       <!-- 【左側欄】：地圖區 + 足跡圖層控制與徽章控制 -->
       <div id="map-panel" class="aspect-square h-full shrink-0 bg-white rounded-xl border border-slate-200 p-2 shadow-sm flex flex-col overflow-hidden relative">
+        <button type="button" onclick="replayRoutes()" class="absolute bottom-6 left-4 z-20 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-md border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-white flex items-center gap-1.5">
+          <i data-lucide="play" class="w-3.5 h-3.5"></i><span id="replay-label">重播航線</span>
+        </button>
+
         <!-- 區域解鎖徽章面板 -->
         <div id="map-badge-panel" class="absolute top-4 left-4 z-20 bg-white/90 backdrop-blur-md px-3 py-2 rounded-xl shadow-md border border-slate-200 text-xs flex items-center gap-3">
           <div class="flex items-center gap-1.5 text-slate-700">
@@ -477,6 +495,10 @@
         </div>
       </div>
       <div id="stats-body"></div>
+      <div class="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-3 mt-1">
+        <button type="button" onclick="downloadReviewCard()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1.5"><i data-lucide="image-down" class="w-3.5 h-3.5"></i>下載回顧圖卡</button>
+        <button type="button" onclick="printLogbook()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1.5"><i data-lucide="printer" class="w-3.5 h-3.5"></i>列印飛行履歷</button>
+      </div>
     </div>
   </div>
 
@@ -883,7 +905,7 @@
     }
 
     function closeAnnouncementModal() {
-      document.getElementById('announcement-modal').classList.add('hidden');
+      animClose('announcement-modal');
     }
 
     async function saveAnnouncement(e) {
@@ -1072,7 +1094,7 @@
     }
 
     function closeAvatarModal() {
-      document.getElementById('avatar-modal').classList.add('hidden');
+      animClose('avatar-modal');
       pendingAvatar = null;
     }
 
@@ -1592,7 +1614,8 @@
     }
 
     function toggleForm() {
-      document.getElementById('modal-overlay').classList.toggle('hidden');
+      const ov = document.getElementById('modal-overlay');
+      if (ov.classList.contains('hidden')) ov.classList.remove('hidden'); else animClose('modal-overlay');
     }
 
     function openCreateModal() {
@@ -1913,6 +1936,7 @@
 
     // 匯出功能 - CSV
     function exportToCSV() {
+      markBackup();
       const dropdown = document.getElementById('export-dropdown');
       if (dropdown) dropdown.classList.add('hidden');
 
@@ -1947,6 +1971,7 @@
 
     // 匯出功能 - JSON
     function exportToJSON() {
+      markBackup();
       const dropdown = document.getElementById('export-dropdown');
       if (dropdown) dropdown.classList.add('hidden');
 
@@ -2123,6 +2148,133 @@
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeStats(); });
       lucide.createIcons();
       checkLegacy();
+      setTimeout(checkBackupReminder, 4000);
+    }
+
+    // ===== 共用:視窗關閉動畫 / 手機版頭像 =====
+    function animClose(id) {
+      const el = document.getElementById(id);
+      if (!el || el.classList.contains('hidden') || el.classList.contains('is-closing')) return;
+      el.classList.add('is-closing');
+      setTimeout(() => { el.classList.remove('is-closing'); el.classList.add('hidden'); }, 180);
+    }
+    function onAvatarClick() {
+      // 手機版沒有名字區塊,點頭像改開選單(簡歷 / 編輯資料 / 換大頭貼 / 登出)
+      if (window.innerWidth < 640) toggleResume(); else openAvatarModal();
+    }
+
+    // ===== 成就徽章(統計視窗內,累計值不受年份篩選影響) =====
+    function achievementsHtml() {
+      const total = flights.reduce((s, f) => s + (Number(f.flight_hours) || 0), 0);
+      const codes = new Set();
+      flights.forEach(f => { if (f.departure_iata) codes.add(f.departure_iata.toUpperCase()); if (f.destination_iata) codes.add(f.destination_iata.toUpperCase()); });
+      const countries = new Set([...codes].map(c => AIRPORT_COUNTRY[c] || '未知地區'));
+      const cats = [
+        ['累計時數', total, [100, 500, 1000, 2000, 5000], n => n + ' 小時'],
+        ['飛行次數', flights.length, [50, 100, 250, 500], n => n + ' 次'],
+        ['機場', codes.size, [10, 25, 50, 100], n => n + ' 個機場'],
+        ['國家/地區', countries.size, [5, 10, 20, 30], n => n + ' 個國家'],
+      ];
+      return cats.map(([title, val, steps, fmt]) => {
+        const next = steps.find(x => val < x);
+        const badges = steps.map(x => { const ok = val >= x;
+          return `<div class="rounded-lg border px-2.5 py-1.5 text-center min-w-[72px] ${ok ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-slate-50 opacity-50'}"><div>${ok ? '🏅' : '🔒'}</div><div class="text-[11px] font-bold text-slate-700">${fmt(x)}</div></div>`; }).join('');
+        return `<div class="mb-3"><div class="flex items-center justify-between mb-1"><span class="text-xs font-semibold text-slate-600">${title}</span>
+          <span class="text-[11px] text-slate-400">${next ? '下一個目標:還差 ' + Math.ceil(next - val) : '全部達成 🎉'}</span></div>
+          <div class="flex flex-wrap gap-2">${badges}</div></div>`;
+      }).join('');
+    }
+
+    // ===== 年度回顧圖卡(下載 PNG) =====
+    let statsSnap = null;
+    function downloadReviewCard() {
+      if (!statsSnap) return;
+      const d = statsSnap, W = 1080, H = 1350;
+      const c = document.createElement('canvas'); c.width = W; c.height = H;
+      const x = c.getContext('2d');
+      const g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#2a67b8'); g.addColorStop(1, '#13305f');
+      x.fillStyle = g; x.fillRect(0, 0, W, H);
+      x.textAlign = 'center'; x.fillStyle = '#ffffff';
+      const F = 'DM Sans, "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+      x.font = `600 40px ${F}`; x.fillStyle = '#E6C65A'; x.fillText(d.name, W / 2, 150);
+      x.fillStyle = '#ffffff'; x.font = `bold 84px ${F}`; x.fillText(d.title, W / 2, 270);
+      x.fillStyle = '#D4AF37'; [-45, -15, 15, 45].forEach(o => x.fillRect(W / 2 + o - 5, 320, 10, 54));
+      const cells = [['飛行時數', d.hours], ['飛行次數', d.count], ['造訪機場', d.airports], ['國家/地區', d.countries]];
+      cells.forEach(([label, val], i) => {
+        const cx = i % 2 ? 790 : 290, cy = i < 2 ? 560 : 820;
+        x.fillStyle = 'rgba(255,255,255,0.1)'; x.beginPath(); x.roundRect(cx - 220, cy - 120, 440, 210, 28); x.fill();
+        x.fillStyle = '#ffffff'; x.font = `bold 84px ${F}`; x.fillText(String(val), cx, cy + 10);
+        x.fillStyle = 'rgba(255,255,255,0.7)'; x.font = `500 34px ${F}`; x.fillText(label, cx, cy + 62);
+      });
+      x.fillStyle = 'rgba(255,255,255,0.7)'; x.font = `500 36px ${F}`;
+      x.fillText('最常飛的航線', W / 2, 1040); x.fillStyle = '#fff'; x.font = `bold 62px ${F}`; x.fillText(d.topRoute || '—', W / 2, 1110);
+      x.fillStyle = 'rgba(255,255,255,0.7)'; x.font = `500 36px ${F}`; x.fillText(d.busiestLabel, W / 2, 1190);
+      x.fillStyle = 'rgba(255,255,255,0.45)'; x.font = `500 28px ${F}`; x.fillText('FLIGHT LOG', W / 2, 1280);
+      c.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'flight-review.png'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); });
+    }
+
+    // ===== 列印版飛行履歷(另開視窗,可列印或存成 PDF) =====
+    function printLogbook() {
+      if (!statsSnap || !statsSnap.list.length) return alert('這段期間沒有飛行紀錄');
+      const rows = [...statsSnap.list].sort((a, b) => (a.flight_date || '').localeCompare(b.flight_date || ''));
+      const esc = v => String(v == null ? '' : v).replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
+      const w = window.open('', '_blank');
+      if (!w) return alert('瀏覽器擋住了新視窗,請允許彈出視窗後再試一次');
+      w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Flight Logbook</title>
+        <style>body{font-family:"Microsoft JhengHei",Arial,sans-serif;padding:24px;color:#1e293b}h1{font-size:20px;margin:0}p{margin:4px 0 16px;color:#64748b;font-size:13px}
+        table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #cbd5e1;padding:5px 8px;text-align:center}th{background:#23569d;color:#fff}tfoot td{font-weight:bold;background:#f1f5f9}
+        @media print{body{padding:0}th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
+        <h1>Flight Logbook — ${esc(statsSnap.name)}</h1><p>${esc(statsSnap.title)} · 共 ${rows.length} 筆 · 總時數 ${esc(statsSnap.hours)}</p>
+        <table><thead><tr><th>日期</th><th>機型</th><th>起飛</th><th>降落</th><th>飛行時間</th></tr></thead><tbody>
+        ${rows.map(f => `<tr><td>${esc(f.flight_date)}</td><td>${esc(f.aircraft_type)}</td><td>${esc(f.departure_iata)}</td><td>${esc(f.destination_iata)}</td><td>${formatHoursToHM(f.flight_hours)}</td></tr>`).join('')}
+        </tbody><tfoot><tr><td colspan="4">合計</td><td>${esc(statsSnap.hours)}</td></tr></tfoot></table>
+        <script>window.onload=function(){setTimeout(function(){window.print()},300)}<\/script></body></html>`);
+      w.document.close();
+    }
+
+    // ===== 地圖航線重播 =====
+    let replaying = false, replayLayer = null;
+    async function replayRoutes() {
+      if (replaying || !map) return;
+      const list = flights.filter(f => f.departure_iata && f.destination_iata && (selectedMapYear === 'ALL' || (f.flight_date || '').startsWith(selectedMapYear)))
+        .sort((a, b) => (a.flight_date || '').localeCompare(b.flight_date || ''));
+      if (!list.length) return;
+      replaying = true;
+      const label = document.getElementById('replay-label');
+      map.removeLayer(routeLayerGroup);
+      replayLayer = L.layerGroup().addTo(map);
+      const delay = Math.max(40, Math.min(300, 7000 / list.length));
+      try {
+        for (const f of list) {
+          const a = await fetchAirportCoords(f.departure_iata), b = await fetchAirportCoords(f.destination_iata);
+          if (!a || !b) continue;
+          const wa = wrapCoords(a), wb = wrapCoords(b);
+          getSplitGreatCircleArcs(wa, wb).forEach(arc => L.polyline(arc, { color: '#23569d', weight: 2, opacity: 0.75, dashArray: '5, 5' }).addTo(replayLayer));
+          L.circleMarker(wb, { radius: 5, fillColor: '#23569d', color: '#fff', weight: 2, fillOpacity: 0.9 }).addTo(replayLayer);
+          label.textContent = f.flight_date || '';
+          await new Promise(r => setTimeout(r, delay));
+        }
+        await new Promise(r => setTimeout(r, 800));
+      } catch (e) { console.error('重播失敗:', e); }
+      map.removeLayer(replayLayer); routeLayerGroup.addTo(map);
+      label.textContent = '重播航線'; replaying = false;
+    }
+
+    // ===== 備份提醒(超過 30 天沒匯出,登入後提醒一次;「稍後」會 7 天後再提醒) =====
+    function markBackup() { try { localStorage.setItem('flightlog_last_backup', String(Date.now())); } catch (e) {} }
+    function checkBackupReminder() {
+      try {
+        const DAY = 86400000, now = Date.now();
+        const last = Number(localStorage.getItem('flightlog_last_backup') || 0), snooze = Number(localStorage.getItem('flightlog_backup_snooze') || 0);
+        if (!flights.length || now - last < 30 * DAY || now < snooze) return;
+        const box = document.createElement('div');
+        box.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-white border border-amber-300 shadow-xl rounded-xl px-4 py-3 text-sm flex items-center gap-3 max-w-[92vw]';
+        box.innerHTML = '<span class="text-slate-700">已超過 30 天沒有匯出備份了</span><button class="font-semibold text-white px-3 py-1 rounded-lg text-xs" style="background-color:#23569d;">立即匯出</button><button class="text-xs text-slate-500">稍後</button>';
+        const [go, later] = box.querySelectorAll('button');
+        go.onclick = () => { exportToJSON(); box.remove(); };
+        later.onclick = () => { try { localStorage.setItem('flightlog_backup_snooze', String(now + 7 * DAY)); } catch (e) {} box.remove(); };
+        document.body.appendChild(box);
+      } catch (e) {}
     }
 
     // ===== 飛行統計 =====
@@ -2139,7 +2291,7 @@
       renderStats();
       lucide.createIcons();
     }
-    function closeStats() { document.getElementById('stats-modal').classList.add('hidden'); statsToken++; }
+    function closeStats() { animClose('stats-modal'); statsToken++; }
     function fillStatsMonths() {
       const sel = document.getElementById('stats-month');
       if (statsYear === 'all') { statsMonth = 'all'; sel.classList.add('hidden'); return; }
@@ -2210,6 +2362,15 @@
       const topAirports = Object.entries(airportCount).sort((a, b) => b[1] - a[1]).slice(0, 10);
       const topRoutes = Object.entries(routeCount).sort((a, b) => b[1] - a[1]).slice(0, 10);
 
+      const bestKey = bKeys.reduce((m, k) => (buckets[k] > (buckets[m] || 0) ? k : m), bKeys[0]);
+      const pr = profileData || {};
+      statsSnap = {
+        list, name: [pr.title, pr.name].filter(Boolean).join(' '),
+        title: mode === 'year' ? '飛行總回顧' : (mode === 'month' ? `${statsYear} 飛行回顧` : `${statsYear} 年 ${Number(statsMonth)} 月回顧`),
+        hours: formatHoursToHM(totalHours), count: list.length, airports: airports.length, countries: countries.size,
+        topRoute: topRoutes[0] ? topRoutes[0][0] : '',
+        busiestLabel: buckets[bestKey] ? `最忙的${mode === 'year' ? '一年' : mode === 'month' ? '月份' : '一天'}:${tip(bestKey)}(${formatHoursToHM(buckets[bestKey])})` : ''
+      };
       const card = (label, value) => `<div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-center">
         <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">${label}</div>
         <div class="text-xl font-bold mt-0.5" style="color:#23569d;">${value}</div></div>`;
@@ -2221,7 +2382,8 @@
         + statSection('機型時數分佈', typeEntries.map(([t, h]) => statRow(t, h / typeEntries[0][1] * 100, `${formatHoursToHM(h)} · ${Math.round(h / totalHours * 100)}%`)).join(''))
         + statSection('機場排行(起降次數)', topAirports.map(([c, n]) => statRow(c, n / topAirports[0][1] * 100, n + ' 次')).join(''))
         + statSection('最常飛的航線', topRoutes.map(([r, n]) => statRow(r, n / topRoutes[0][1] * 100, n + ' 次')).join(''))
-        + statSection('最長 / 最短航程', '<div id="stats-distance" class="text-xs text-slate-400">計算中...</div>');
+        + statSection('最長 / 最短航程', '<div id="stats-distance" class="text-xs text-slate-400">計算中...</div>')
+        + statSection('累計成就(不受年份篩選影響)', achievementsHtml());
 
       // 航程距離(用機場座標算大圓距離;查不到座標的航線會略過)
       const codes = [...new Set(Object.keys(routeCount).flatMap(r => r.split('⇄')))];
@@ -2271,7 +2433,7 @@
       document.getElementById('p-career').value = careerToText(p.career);
       document.getElementById('profile-modal').classList.remove('hidden');
     }
-    function closeProfileModal() { document.getElementById('profile-modal').classList.add('hidden'); }
+    function closeProfileModal() { animClose('profile-modal'); }
 
     async function saveProfile() {
       const name = document.getElementById('p-name').value.trim();
