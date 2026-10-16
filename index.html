@@ -1978,8 +1978,8 @@
       const provider = new firebase.auth.GoogleAuthProvider();
       try { await auth.signInWithPopup(provider); }
       catch (e) {
-        if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment') return auth.signInWithRedirect(provider);
-        if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') showLogin('登入失敗:' + e.message);
+        if (e.code === 'auth/popup-blocked') return showLogin('瀏覽器擋住了登入視窗,請允許此網站的彈出視窗後再試一次。');
+        if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') showLogin('登入失敗(' + (e.code || 'unknown') + '):' + e.message);
       }
     }
 
@@ -1992,7 +1992,9 @@
         const invite = await db.collection('invites').doc((user.email || '').toLowerCase()).get();
         if (!invite.exists) throw new Error('not-invited');
       } catch (e) {
-        loginMsg = '此帳號(' + user.email + ')尚未受邀,請聯絡管理員。';
+        console.error('邀請檢查失敗:', e);
+        if (e.message === 'not-invited') loginMsg = '此帳號(' + user.email + ')不在邀請名單上。請確認 invites 裡的文件 ID 與此信箱完全一致(全小寫)。';
+        else loginMsg = '讀取邀請名單失敗(' + (e.code || 'unknown') + '):' + e.message;
         return auth.signOut();
       }
       currentUser = user;
