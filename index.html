@@ -268,7 +268,7 @@
             </p>
             <p id="typerating-text" class="text-xs font-medium text-slate-500 tracking-normal"></p>
           </div>
-          <button type="button" id="avatar-btn" onclick="onAvatarClick()" title="點擊更換大頭貼"
+          <button type="button" id="avatar-btn" onclick="onAvatarClick(event)" title="點擊更換大頭貼"
                   class="relative w-11 h-11 rounded-full border border-slate-200 bg-slate-50 shadow-sm overflow-hidden shrink-0 flex items-center justify-center text-slate-400 hover:border-blue-400 transition-colors group">
             <img id="avatar-img" alt="大頭貼" class="hidden w-full h-full object-cover">
             <i id="avatar-placeholder" data-lucide="user" class="w-5 h-5"></i>
@@ -1019,7 +1019,7 @@
       document.addEventListener('click', (e) => {
         const pop = document.getElementById('resume-popover');
         if (!pop || !pop.classList.contains('is-open')) return;
-        if (!pop.contains(e.target) && !document.getElementById('resume-btn').contains(e.target)) closeResume();
+        if (!pop.contains(e.target) && !document.getElementById('resume-btn').contains(e.target) && !document.getElementById('avatar-btn').contains(e.target)) closeResume();
       });
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeResume(); });
     }
@@ -2158,9 +2158,9 @@
       el.classList.add('is-closing');
       setTimeout(() => { el.classList.remove('is-closing'); el.classList.add('hidden'); }, 180);
     }
-    function onAvatarClick() {
+    function onAvatarClick(e) {
       // 手機版沒有名字區塊,點頭像改開選單(簡歷 / 編輯資料 / 換大頭貼 / 登出)
-      if (window.innerWidth < 640) toggleResume(); else openAvatarModal();
+      if (window.innerWidth < 640) toggleResume(e); else openAvatarModal();
     }
 
     // ===== 成就徽章(統計視窗內,累計值不受年份篩選影響) =====
