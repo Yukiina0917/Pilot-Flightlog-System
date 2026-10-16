@@ -1249,7 +1249,7 @@
 
             splitArcs.forEach(arc => {
               L.polyline(arc, {
-                color: '#D46475',
+                color: '#23569d',
                 weight: arcWeight,
                 opacity: 0.75,
                 dashArray: '5, 5'
@@ -1278,7 +1278,7 @@
           radius: 25,
           blur: 15,
           maxZoom: 10,
-          gradient: { 0.2: '#F4B6BE', 0.5: '#E48795', 0.8: '#D46475' }
+          gradient: { 0.2: '#3b82f6', 0.5: '#eab308', 0.8: '#ef4444' }
         }).addTo(map);
       }
 
@@ -1295,7 +1295,7 @@
 
         const tooltipContent = `
           <div class="p-1.5 text-xs text-slate-800">
-            <div class="font-bold text-sm flex items-center gap-1" style="color: #D46475;">
+            <div class="font-bold text-sm text-blue-900 flex items-center gap-1">
               <i data-lucide="plane" class="w-3.5 h-3.5 inline"></i> ${code} 機場
             </div>
             <div class="mt-1 space-y-0.5 text-slate-600">
@@ -1308,7 +1308,7 @@
 
         L.circleMarker(coords, {
           radius: Math.min(4 + stat.total, 12),
-          fillColor: '#D46475',
+          fillColor: '#23569d',
           color: '#ffffff',
           weight: 2,
           fillOpacity: 0.9
