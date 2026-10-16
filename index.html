@@ -189,6 +189,7 @@
 
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 
   <script>
     const firebaseConfig = {
@@ -202,6 +203,11 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    // 每位使用者的資料都放在 users/{uid}/ 底下
+    let currentUser = null;
+    function ucol(name) { return db.collection('users').doc(currentUser.uid).collection(name); }
   </script>
 </head>
 
@@ -230,16 +236,7 @@
 
       <div class="hdr-right flex items-center gap-5 shrink-0">
         <!-- 飛行時數卡片 -->
-        <div class="hdr-stats flex items-center gap-3">
-          <div class="hdr-stat bg-slate-50 px-3.5 py-1.5 rounded-lg border border-slate-200 shadow-sm text-center">
-            <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider leading-tight">A359 HRS</p>
-            <p id="hours-a359" style="color: #23569d;" class="hdr-stat-value text-base font-bold leading-tight mt-0.5">0:00</p>
-          </div>
-          <div class="hdr-stat bg-slate-50 px-3.5 py-1.5 rounded-lg border border-slate-200 shadow-sm text-center">
-            <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider leading-tight">A35K HRS</p>
-            <p id="hours-a35k" style="color: #23569d;" class="hdr-stat-value text-base font-bold leading-tight mt-0.5">0:00</p>
-          </div>
-        </div>
+        <div id="hdr-stats" class="hdr-stats flex items-center gap-3"></div>
 
         <!-- 機師資訊 + 大頭貼 -->
         <div class="hdr-profile relative flex items-center gap-3 border-l border-slate-200 pl-5">
@@ -247,23 +244,10 @@
                onclick="toggleResume(event)" onkeydown="if(event.key==='Enter'||event.key===' '){toggleResume(event)}"
                class="text-right hidden sm:block cursor-pointer select-none rounded-lg px-2 py-1 -mx-2 hover:bg-slate-100 transition-colors">
             <p class="text-sm font-bold text-slate-800 tracking-wide flex items-center justify-end gap-1.5">
-              <!-- 機長四條金槓(高度 16px) -->
-              <svg viewBox="7 3 30 20" class="h-4 w-auto shrink-0" role="img" aria-label="Captain 四條金槓">
-                <defs>
-                  <linearGradient id="gold-stripe" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0" stop-color="#E6C65A"/>
-                    <stop offset="0.5" stop-color="#D4AF37"/>
-                    <stop offset="1" stop-color="#B08A1E"/>
-                  </linearGradient>
-                </defs>
-                <rect x="8"  y="4" width="4" height="18" rx="0.8" fill="url(#gold-stripe)"/>
-                <rect x="16" y="4" width="4" height="18" rx="0.8" fill="url(#gold-stripe)"/>
-                <rect x="24" y="4" width="4" height="18" rx="0.8" fill="url(#gold-stripe)"/>
-                <rect x="32" y="4" width="4" height="18" rx="0.8" fill="url(#gold-stripe)"/>
-              </svg>
-              <span>Capt. Yukiina</span>
+              <span id="hdr-stripes" class="flex items-center"></span>
+              <span id="name-text">—</span>
             </p>
-            <p class="text-xs font-medium text-slate-500 tracking-normal">Type Rating A350 XWB Series</p>
+            <p id="typerating-text" class="text-xs font-medium text-slate-500 tracking-normal"></p>
           </div>
           <button type="button" id="avatar-btn" onclick="openAvatarModal()" title="點擊更換大頭貼"
                   class="relative w-11 h-11 rounded-full border border-slate-200 bg-slate-50 shadow-sm overflow-hidden shrink-0 flex items-center justify-center text-slate-400 hover:border-blue-400 transition-colors group">
@@ -286,6 +270,11 @@
               </button>
             </div>
             <div id="resume-body"></div>
+            <div class="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+              <button type="button" onclick="closeResume(); openProfileModal(false)" class="text-slate-500 hover:text-slate-800 font-medium">編輯個人資料</button>
+              <button type="button" onclick="auth.signOut()" class="text-slate-500 hover:text-red-600 font-medium">登出</button>
+            </div>
+            <button type="button" id="migrate-btn" onclick="migrateLegacy()" class="hidden mt-2 w-full py-1.5 rounded-lg text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100">搬移舊資料到我的帳號(一次性)</button>
           </div>
         </div>
       </div>
@@ -462,6 +451,47 @@
       </div>
     </div>
   </main>
+
+  <!-- 登入畫面 -->
+  <div id="login-overlay" class="fixed inset-0 z-[100] bg-slate-50 flex items-center justify-center p-4">
+    <div class="w-full max-w-sm bg-white border border-slate-200 rounded-2xl p-8 shadow-xl text-center">
+      <div class="text-2xl font-bold text-slate-800 mb-1">Flight Log</div>
+      <p class="text-sm text-slate-500 mb-6">請登入受邀的 Google 帳號</p>
+      <p id="login-status" class="text-sm text-slate-400 mb-4">載入中...</p>
+      <button type="button" id="login-btn" onclick="signInWithGoogle()" class="hidden w-full py-2.5 rounded-lg font-medium text-white text-sm hover:opacity-90" style="background-color: #23569d;">使用 Google 登入</button>
+      <p id="login-error" class="text-sm text-red-600 mt-4 hidden"></p>
+    </div>
+  </div>
+
+  <!-- 個人資料 Modal -->
+  <div id="profile-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+    <div class="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl my-6">
+      <h3 id="profile-title" class="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-3">個人資料</h3>
+      <div class="space-y-3 text-sm">
+        <div class="flex gap-2">
+          <div class="w-28"><label class="text-xs text-slate-600 block mb-1">稱謂</label>
+            <select id="p-title" class="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5"><option value="Capt.">Capt.</option><option value="F/O">F/O</option><option value="">無</option></select></div>
+          <div class="flex-1"><label class="text-xs text-slate-600 block mb-1">名字</label>
+            <input id="p-name" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5" placeholder="例如 Yukiina"></div>
+        </div>
+        <div><label class="text-xs text-slate-600 block mb-1">Type Rating</label>
+          <input id="p-rating" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5" placeholder="例如 A350 XWB Series"></div>
+        <div class="flex gap-2">
+          <div class="w-28"><label class="text-xs text-slate-600 block mb-1">名字旁金槓</label>
+            <select id="p-stripes" class="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5"><option value="0">無</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
+          <div class="flex-1"><label class="text-xs text-slate-600 block mb-1">累計飛行時數(自由填寫)</label>
+            <input id="p-total" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5" placeholder="例如 10000+"></div>
+        </div>
+        <div><label class="text-xs text-slate-600 block mb-1">機型經歷(一行一個:機型, 槓數, 時數)</label>
+          <textarea id="p-career" rows="5" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 font-mono text-xs" placeholder="A320, 3, 200+&#10;B747, 3>4, 1800+&#10;A350, 4, 5000+"></textarea>
+          <p class="text-[11px] text-slate-400 mt-1">槓數寫 3 代表三槓,晉升寫 3>4 會顯示成 III › IIII</p></div>
+      </div>
+      <div class="flex gap-3 mt-5">
+        <button type="button" id="profile-cancel" onclick="closeProfileModal()" class="w-1/3 py-2 rounded-lg font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm">取消</button>
+        <button type="button" onclick="saveProfile()" class="w-2/3 py-2 rounded-lg font-medium text-white text-sm hover:opacity-90" style="background-color: #23569d;">儲存</button>
+      </div>
+    </div>
+  </div>
 
   <!-- 大頭貼更換 Modal -->
   <div id="avatar-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
@@ -801,7 +831,7 @@
 
 
     function initAnnouncementListener() {
-      db.collection("announcements").doc("latest")
+      ucol("announcements").doc("latest")
         .onSnapshot((doc) => {
           if (doc.exists && doc.data().text) {
             currentAnnouncementText = doc.data().text;
@@ -832,7 +862,7 @@
 
       btn.disabled = true;
       try {
-        await db.collection("announcements").doc("latest").set({
+        await ucol("announcements").doc("latest").set({
           text: text,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -861,14 +891,14 @@
     let stripeSvgSeq = 0;
 
     // 畫 n 條直立金槓
-    function stripesSvg(n) {
+    function stripesSvg(n, px = 12) {
       const barW = 3, gap = 3.5, h = 12;
       const w = n * barW + (n - 1) * gap;
       const gid = 'rg' + (stripeSvgSeq++);
       const bars = Array.from({ length: n }, (_, i) =>
         `<rect x="${i * (barW + gap)}" y="0" width="${barW}" height="${h}" rx="0.6" fill="url(#${gid})"/>`
       ).join('');
-      return `<svg viewBox="0 0 ${w} ${h}" style="height:12px;width:auto;flex-shrink:0;" aria-hidden="true">
+      return `<svg viewBox="0 0 ${w} ${h}" style="height:${px}px;width:auto;flex-shrink:0;" aria-hidden="true">
         <defs><linearGradient id="${gid}" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0" stop-color="#E6C65A"/><stop offset="0.5" stop-color="#D4AF37"/><stop offset="1" stop-color="#B08A1E"/>
         </linearGradient></defs>${bars}</svg>`;
@@ -879,14 +909,14 @@
       const arrow = '<svg viewBox="0 0 6 10" style="height:8px;width:auto;flex-shrink:0;" aria-hidden="true"><path d="M1 1l4 4-4 4" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
       const roleName = (n) => (n >= 4 ? '機長 CAPT' : '副機長 FO');
       const title = list.map(roleName).join(' → ');
-      return `<span class="flex items-center gap-1.5" title="${title}">${list.map(stripesSvg).join(arrow)}</span>`;
+      return `<span class="flex items-center gap-1.5" title="${title}">${list.map(n => stripesSvg(n)).join(arrow)}</span>`;
     }
 
     function renderResume() {
       const body = document.getElementById('resume-body');
       if (!body) return;
 
-      const rowsHtml = CAREER_HISTORY.map((r, idx) => `
+      const rowsHtml = ((profileData && profileData.career) || []).map((r, idx) => `
         <div class="resume-item flex items-center justify-between py-1 text-xs" style="--i:${idx + 2}">
           <span class="flex items-center gap-2.5">
             <span class="font-semibold text-slate-700 w-10">${r.type}</span>
@@ -898,7 +928,7 @@
       body.innerHTML = `
         <div class="resume-item rounded-lg px-2.5 py-1.5 mb-2 flex items-center justify-between" style="--i:0; background-color: #23569d0D; border: 1px solid #23569d26;">
           <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">累計飛行時數</span>
-          <span class="text-base font-bold" style="color: #23569d;">${TOTAL_HOURS_TEXT}</span>
+          <span class="text-base font-bold" style="color: #23569d;">${(profileData && profileData.totalHours) || '—'}</span>
         </div>
 
         <div class="resume-item text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5" style="--i:1">機型經歷</div>
@@ -923,6 +953,11 @@
       if (e) { e.preventDefault(); e.stopPropagation(); }
       const pop = document.getElementById('resume-popover');
       if (pop.classList.contains('is-open')) closeResume(); else openResume();
+    }
+
+    function refreshResumeIfOpen() {
+      const pop = document.getElementById('resume-popover');
+      if (pop && pop.classList.contains('is-open')) renderResume();
     }
 
     function initResume() {
@@ -977,7 +1012,9 @@
         if (cached) { currentAvatar = cached; renderAvatar(cached); }
       } catch (e) {}
 
-      db.collection("settings").doc("profile").onSnapshot((doc) => {
+      ucol("settings").doc("profile").onSnapshot((doc) => {
+        profileData = doc.exists ? doc.data() : null;
+        applyProfile();
         const remote = (doc.exists && doc.data().avatar) ? doc.data().avatar : '';
         // 雲端沒資料時,保留本機快取(例如先前只存在本機的情況)
         if (!remote && currentAvatar && !doc.exists) return;
@@ -1061,10 +1098,10 @@
 
       // 再同步到雲端
       try {
-        await db.collection("settings").doc("profile").set({
+        await ucol("settings").doc("profile").set({
           avatar: newAvatar,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        }, { merge: true });
         closeAvatarModal();
       } catch (err) {
         console.error(err);
@@ -1422,7 +1459,7 @@
     function resetDestFilter() { filterByDest(''); }
 
     function initFirestoreListener() {
-      db.collection("flights")
+      ucol("flights")
         .onSnapshot(async (snapshot) => {
           flights = snapshot.docs.map(doc => ({
             id: doc.id,
@@ -1517,10 +1554,10 @@
       };
 
       try {
-        if (docId) await db.collection("flights").doc(docId).update(record);
+        if (docId) await ucol("flights").doc(docId).update(record);
         else {
           record.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-          await db.collection("flights").add(record);
+          await ucol("flights").add(record);
         }
         e.target.reset();
         toggleForm();
@@ -1716,11 +1753,14 @@
       document.getElementById('flight-card-list').innerHTML = filteredFlights.map(buildFlightCard).join('');
       updateMobileFilterUI();
 
-      const totalA359 = flights.filter(f => f.aircraft_type === 'A359').reduce((s, f) => s + (Number(f.flight_hours) || 0), 0);
-      const totalA35K = flights.filter(f => f.aircraft_type === 'A35K').reduce((s, f) => s + (Number(f.flight_hours) || 0), 0);
-
-      document.getElementById('hours-a359').textContent = formatHoursToHM(totalA359);
-      document.getElementById('hours-a35k').textContent = formatHoursToHM(totalA35K);
+      // 標題列時數卡片:自動顯示飛行紀錄中時數最多的前兩個機型
+      const hoursByType = {};
+      flights.forEach(f => { if (f.aircraft_type) hoursByType[f.aircraft_type] = (hoursByType[f.aircraft_type] || 0) + (Number(f.flight_hours) || 0); });
+      document.getElementById('hdr-stats').innerHTML = Object.entries(hoursByType).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([t, h]) => `
+        <div class="hdr-stat bg-slate-50 px-3.5 py-1.5 rounded-lg border border-slate-200 shadow-sm text-center">
+          <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider leading-tight">${t} HRS</p>
+          <p style="color: #23569d;" class="hdr-stat-value text-base font-bold leading-tight mt-0.5">${formatHoursToHM(h)}</p>
+        </div>`).join('');
 
       if (filteredFlights.length) {
         empty.style.display = 'none';
@@ -1743,7 +1783,7 @@
     async function deleteFlight(docId) {
       if (!docId) return;
       if (confirm('確定要刪除這筆飛行紀錄嗎？')) {
-        try { await db.collection("flights").doc(docId).delete(); }
+        try { await ucol("flights").doc(docId).delete(); }
         catch (err) { alert('刪除失敗：' + err.message); }
       }
     }
@@ -1853,7 +1893,7 @@
           const batch = db.batch();
           records.forEach(record => {
             record.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-            const docRef = db.collection("flights").doc();
+            const docRef = ucol("flights").doc();
             batch.set(docRef, record);
           });
 
@@ -1922,14 +1962,140 @@
       }));
     }
 
-    window.onload = () => {
+    // ===== 登入 / 邀請制 =====
+    let profileData = null, appStarted = false, loginMsg = '', setupPrompted = false;
+
+    function showLogin(msg) {
+      document.getElementById('login-overlay').classList.remove('hidden');
+      document.getElementById('login-status').classList.add('hidden');
+      document.getElementById('login-btn').classList.remove('hidden');
+      const err = document.getElementById('login-error');
+      if (msg) { err.textContent = msg; err.classList.remove('hidden'); } else err.classList.add('hidden');
+    }
+
+    async function signInWithGoogle() {
+      loginMsg = '';
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try { await auth.signInWithPopup(provider); }
+      catch (e) {
+        if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment') return auth.signInWithRedirect(provider);
+        if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') showLogin('登入失敗:' + e.message);
+      }
+    }
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        if (appStarted) return location.reload();
+        return showLogin(loginMsg);
+      }
+      try {
+        const invite = await db.collection('invites').doc((user.email || '').toLowerCase()).get();
+        if (!invite.exists) throw new Error('not-invited');
+      } catch (e) {
+        loginMsg = '此帳號(' + user.email + ')尚未受邀,請聯絡管理員。';
+        return auth.signOut();
+      }
+      currentUser = user;
+      document.getElementById('login-overlay').classList.add('hidden');
+      startApp();
+    });
+
+    function startApp() {
+      if (appStarted) return;
+      appStarted = true;
       initMap();
       initFirestoreListener();
       initAnnouncementListener();
       initAvatar();
       initResume();
       lucide.createIcons();
-    };
+      checkLegacy();
+    }
+
+    // ===== 個人資料 =====
+    function applyProfile() {
+      const p = profileData || {};
+      document.getElementById('name-text').textContent = [p.title, p.name].filter(Boolean).join(' ') || '未設定名字';
+      document.getElementById('typerating-text').textContent = p.typeRating ? 'Type Rating ' + p.typeRating : '';
+      const n = Number(p.stripes) || 0;
+      document.getElementById('hdr-stripes').innerHTML = n > 0 ? stripesSvg(n, 16) : '';
+      if (!p.name && !setupPrompted) { setupPrompted = true; openProfileModal(true); }
+      refreshResumeIfOpen();
+    }
+
+    function careerToText(list) {
+      return (list || []).map(c => `${c.type}, ${(c.stripes || []).join('>')}, ${c.hours || ''}`).join('\n');
+    }
+    function textToCareer(text) {
+      return text.split('\n').map(l => l.trim()).filter(Boolean).map(l => {
+        const [type, st, ...rest] = l.split(/[,，]/).map(x => x.trim());
+        const stripes = (st || '').split('>').map(Number).filter(n => n >= 1 && n <= 4);
+        return { type, stripes: stripes.length ? stripes : [3], hours: rest.join(',') };
+      }).filter(c => c.type);
+    }
+
+    function openProfileModal(isSetup) {
+      const p = profileData || {};
+      document.getElementById('profile-title').textContent = isSetup ? '歡迎!請先設定個人資料' : '編輯個人資料';
+      document.getElementById('profile-cancel').classList.toggle('hidden', !!isSetup);
+      document.getElementById('p-title').value = p.title !== undefined ? p.title : 'Capt.';
+      document.getElementById('p-name').value = p.name || '';
+      document.getElementById('p-rating').value = p.typeRating || '';
+      document.getElementById('p-stripes').value = String(p.stripes !== undefined ? p.stripes : 4);
+      document.getElementById('p-total').value = p.totalHours || '';
+      document.getElementById('p-career').value = careerToText(p.career);
+      document.getElementById('profile-modal').classList.remove('hidden');
+    }
+    function closeProfileModal() { document.getElementById('profile-modal').classList.add('hidden'); }
+
+    async function saveProfile() {
+      const name = document.getElementById('p-name').value.trim();
+      if (!name) return alert('請填寫名字');
+      try {
+        await ucol('settings').doc('profile').set({
+          title: document.getElementById('p-title').value,
+          name,
+          typeRating: document.getElementById('p-rating').value.trim(),
+          stripes: Number(document.getElementById('p-stripes').value),
+          totalHours: document.getElementById('p-total').value.trim(),
+          career: textToCareer(document.getElementById('p-career').value),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        closeProfileModal();
+      } catch (err) { alert('儲存失敗:' + err.message); }
+    }
+
+    // ===== 一次性搬移舊資料(舊的最上層集合 → 我的帳號) =====
+    async function checkLegacy() {
+      try {
+        const snap = await db.collection('flights').limit(1).get();
+        if (!snap.empty) document.getElementById('migrate-btn').classList.remove('hidden');
+      } catch (e) { /* 規則已鎖定時讀不到舊資料,屬正常 */ }
+    }
+
+    async function migrateLegacy() {
+      if (!confirm('要把舊的飛行紀錄、公告、大頭貼與簡歷搬到目前登入的帳號嗎?\n(只需執行一次,請確認登入的是你自己的帳號)')) return;
+      try {
+        const snap = await db.collection('flights').get();
+        let batch = db.batch(), n = 0;
+        for (const d of snap.docs) {
+          batch.set(ucol('flights').doc(d.id), d.data());
+          if (++n % 400 === 0) { await batch.commit(); batch = db.batch(); }
+        }
+        await batch.commit();
+        const ann = await db.collection('announcements').doc('latest').get();
+        if (ann.exists) await ucol('announcements').doc('latest').set(ann.data());
+        const old = await db.collection('settings').doc('profile').get();
+        await ucol('settings').doc('profile').set({
+          ...(old.exists ? old.data() : {}),
+          title: 'Capt.', name: 'Yukiina', typeRating: 'A350 XWB Series', stripes: 4,
+          totalHours: TOTAL_HOURS_TEXT,
+          career: CAREER_HISTORY.map(({ type, stripes, hours }) => ({ type, stripes, hours }))
+        }, { merge: true });
+        document.getElementById('migrate-btn').classList.add('hidden');
+        alert('搬移完成,共 ' + snap.size + ' 筆飛行紀錄。確認資料都在之後,再去 Firebase 後台鎖定規則。');
+      } catch (err) { alert('搬移失敗:' + err.message); }
+    }
 
     window.onresize = () => {
       if (map) map.invalidateSize();
