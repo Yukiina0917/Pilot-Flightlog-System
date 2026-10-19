@@ -96,6 +96,10 @@
       animation: modalPopIn .35s cubic-bezier(.34, 1.35, .64, 1) both;
     }
 
+    /* 深色模式:整頁反相,再把照片類元素反相回來 */
+    html.dark { filter: invert(1) hue-rotate(180deg) contrast(0.9) brightness(0.95); }
+    html.dark #avatar-img, html.dark #avatar-preview, html.dark #crop-canvas { filter: invert(1) hue-rotate(180deg); }
+
     /* 視窗關閉動畫 */
     @keyframes overlayOut { from { opacity: 1; } to { opacity: 0; } }
     @keyframes modalPopOut {
@@ -289,6 +293,7 @@
               </button>
             </div>
             <div id="resume-body"></div>
+            <button type="button" id="theme-btn" onclick="toggleTheme()" class="mt-2.5 w-full py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-600"></button>
             <div class="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
               <button type="button" onclick="closeResume(); openProfileModal(false)" class="text-slate-500 hover:text-slate-800 font-medium">編輯資料</button>
               <button type="button" onclick="closeResume(); openAvatarModal()" class="text-slate-500 hover:text-slate-800 font-medium">換大頭貼</button>
@@ -1482,6 +1487,8 @@
           fillOpacity: 0.9
         })
         .bindTooltip(tooltipContent, { direction: 'top', opacity: 0.95 })
+        .bindPopup(() => airportDetailHtml(code), { maxWidth: 300 })
+        .on('popupopen', function () { this.closeTooltip(); })
         .addTo(routeLayerGroup);
       }
 
@@ -2145,10 +2152,83 @@
       initAvatar();
       initResume();
       initCropEvents();
+      applyTheme();
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeStats(); });
       lucide.createIcons();
       checkLegacy();
       setTimeout(checkBackupReminder, 4000);
+    }
+
+    // ===== 深色模式 =====
+    function applyTheme() {
+      let dark = false;
+      try { dark = localStorage.getItem('flightlog_theme') === 'dark'; } catch (e) {}
+      document.documentElement.classList.toggle('dark', dark);
+      const b = document.getElementById('theme-btn');
+      if (b) b.textContent = dark ? '☀️ 切換為淺色模式' : '🌙 切換為深色模式';
+    }
+    function toggleTheme() {
+      const dark = document.documentElement.classList.contains('dark');
+      try { localStorage.setItem('flightlog_theme', dark ? 'light' : 'dark'); } catch (e) {}
+      applyTheme();
+    }
+    applyTheme();
+
+    // ===== 地圖:點機場看詳情(累計資料,不受地圖年份篩選影響) =====
+    function airportDetailHtml(code) {
+      const up = v => (v || '').toUpperCase();
+      const rel = flights.filter(f => up(f.departure_iata) === code || up(f.destination_iata) === code)
+        .sort((a, b) => (a.flight_date || '').localeCompare(b.flight_date || ''));
+      if (!rel.length) return `<b>${code}</b>`;
+      const dep = rel.filter(f => up(f.departure_iata) === code).length, arr = rel.filter(f => up(f.destination_iata) === code).length;
+      const hours = rel.reduce((s, f) => s + (Number(f.flight_hours) || 0), 0);
+      const routes = {};
+      rel.forEach(f => { const o = up(f.departure_iata) === code ? up(f.destination_iata) : up(f.departure_iata); if (o) routes[o] = (routes[o] || 0) + 1; });
+      const top = Object.entries(routes).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([o, n]) => `${code}⇄${o} × ${n}`).join('<br>') || '—';
+      const row = (k, v) => `<div style="display:flex;justify-content:space-between;gap:14px;"><span style="color:#64748b;">${k}</span><span style="font-weight:600;text-align:right;">${v}</span></div>`;
+      return `<div style="font-size:12px;min-width:210px;">
+        <div style="font-weight:700;font-size:14px;color:#23569d;">${code} 機場</div>
+        <div style="color:#94a3b8;margin-bottom:6px;">${AIRPORT_COUNTRY[code] || '未知地區'}</div>
+        <div style="display:grid;gap:4px;">
+          ${row('累計起降', `${rel.length} 次(起 ${dep} / 降 ${arr})`)}
+          ${row('第一次造訪', rel[0].flight_date || '—')}
+          ${row('最近一次', rel[rel.length - 1].flight_date || '—')}
+          ${row('相關飛行時數', formatHoursToHM(hours))}
+          ${row('常飛航線', top)}
+        </div></div>`;
+    }
+
+    // ===== 年度目標(存在個人資料 goals 欄位,以年份為鍵) =====
+    function goalHtml() {
+      const nowY = String(new Date().getFullYear());
+      const year = statsYear === 'all' ? nowY : statsYear;
+      const goal = Number(((profileData || {}).goals || {})[year]) || 0;
+      const done = flights.filter(f => (f.flight_date || '').startsWith(year)).reduce((s, f) => s + (Number(f.flight_hours) || 0), 0);
+      const btn = `<button type="button" onclick="setYearGoal('${year}')" class="text-xs font-semibold" style="color:#23569d;">${goal ? '修改目標' : '設定目標'}</button>`;
+      if (!goal) return `<div class="flex items-center justify-between rounded-xl border border-dashed border-slate-300 px-3 py-3 text-xs text-slate-500"><span>尚未設定 ${year} 年的目標時數</span>${btn}</div>`;
+      let proj = '';
+      if (year === nowY && done < goal) {
+        const now = new Date(), day = Math.max(1, Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000));
+        proj = `<div class="text-[11px] text-slate-400 mt-0.5">照目前的速度,年底預估可達 ${formatHoursToHM(done / day * 365)}</div>`;
+      }
+      return `<div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+        <div class="flex items-center justify-between text-xs mb-1.5"><span class="font-semibold text-slate-700">${year} 年 · 目標 ${goal} 小時</span>${btn}</div>
+        <div class="h-3 bg-slate-200 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${Math.min(100, done / goal * 100)}%;background:#23569d;"></div></div>
+        <div class="flex items-center justify-between text-[11px] mt-1.5 text-slate-500"><span>已完成 ${formatHoursToHM(done)}(${Math.round(done / goal * 100)}%)</span><span>${done >= goal ? '🎉 已達成目標' : '還差 ' + formatHoursToHM(goal - done)}</span></div>${proj}</div>`;
+    }
+    async function setYearGoal(year) {
+      const cur = ((profileData || {}).goals || {})[year] || '';
+      const v = prompt(`設定 ${year} 年的目標飛行時數(小時;留空可清除目標)`, cur);
+      if (v === null) return;
+      const t = v.trim(), n = Number(t);
+      if (t !== '' && !(n > 0)) return alert('請輸入大於 0 的數字');
+      try {
+        await ucol('settings').doc('profile').set({ goals: { [year]: t === '' ? firebase.firestore.FieldValue.delete() : n } }, { merge: true });
+        const goals = { ...((profileData || {}).goals || {}) };
+        if (t === '') delete goals[year]; else goals[year] = n;
+        profileData = { ...(profileData || {}), goals };
+        renderStats();
+      } catch (e) { alert('儲存失敗:' + e.message); }
     }
 
     // ===== 共用:視窗關閉動畫 / 手機版頭像 =====
@@ -2377,6 +2457,7 @@
 
       body.innerHTML =
         `<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">${card('飛行次數', list.length)}${card('總時數', formatHoursToHM(totalHours))}${card('機場', airports.length)}${card('國家/地區', countries.size)}</div>`
+        + statSection('年度目標', goalHtml())
         + statSection(chartTitle,
             `<div class="flex items-end gap-1 h-36 border-b border-slate-200">${bars}</div><div class="flex gap-1 mt-1">${labels}</div>`)
         + statSection('機型時數分佈', typeEntries.map(([t, h]) => statRow(t, h / typeEntries[0][1] * 100, `${formatHoursToHM(h)} · ${Math.round(h / totalHours * 100)}%`)).join(''))
