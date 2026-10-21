@@ -2257,10 +2257,19 @@
       if (useds[0]) put('tfu', numAfter(useds[0]));
       put('lspd', after(/LANDING/, /SPEED/));
       const vs = (() => { for (const a of W.filter(w => /LANDING/.test(w.t))) {
-        const b = row(a).filter(w => w.x0 > a.x0 && /^V\/?[S5]/.test(w.t)).sort((p, q) => p.x0 - q.x0)[0];
+        const b = row(a).filter(w => w.x0 > a.x0 && /^V.{0,2}?[S5$]/.test(w.t)).sort((p, q) => p.x0 - q.x0)[0];
         if (b) { const v = numAfter(b); if (v !== null) { const prev = row(b).some(w => w.x0 >= b.x1 - 6 && w.t === '-'); return (v.startsWith('-') || !prev) ? v : '-' + v; } }
       } return null; })();
       put('lvs', vs);
+      if (out.lvs === undefined && out.lspd !== undefined) { // 標籤沒讀到時:取「降落速度」正下方那一列的數字
+        let sp = null;
+        for (const a of W.filter(w => /LANDING/.test(w.t))) { const b = row(a).filter(w => w.x0 > a.x0 && /SPEED/.test(w.t))[0]; if (b) { sp = b; break; } }
+        if (sp) {
+          const c = W.filter(w => w.y > sp.y + mh * 1.2 && w.y < sp.y + mh * 4 && w.x0 > sp.x1 - 6 && /\d{2,4}/.test(w.t)).sort((p, q) => (p.y - q.y) || (p.x0 - q.x0));
+          const m = c[0] && c[0].t.match(NUM);
+          if (m) put('lvs', m[0]);
+        }
+      }
       // TOTAL FT:取 FT 到下一個 TOTAL 之間的數字(中文「小時/分」會被忽略)
       for (const ft of W.filter(w => /^FT\.?$/.test(w.t))) {
         const r = row(ft);
@@ -2285,16 +2294,15 @@
       const d = g(/DATE[^\d]{0,12}(\d{1,2})\s*[.\-\/]\s*(\d{1,2})\s*[.\-\/]\s*(\d{4})/);
       if (d) out.date = `${d[3]}-${d[2].padStart(2, '0')}-${d[1].padStart(2, '0')}`;
       if (!out.date) { const d2 = g(/(\d{1,2})\s*[.\-\/]\s*(\d{1,2})\s*[.\-\/]\s*(20\d{2})/); if (d2) out.date = `${d2[3]}-${d2[2].padStart(2, '0')}-${d2[1].padStart(2, '0')}`; }
-      const ac = g(/A?\s?350\s*-?\s*(900|1000)/);
-      if (ac) out.aircraft = ac[1] === '900' ? 'A359' : 'A35K';
-      else if (/777\s*-?\s*300/.test(T)) out.aircraft = 'B77W';
+      const ac = g(/A\s?350\s*-?\s*([19])/) || g(/AIRBUS\D{0,6}350\s*-?\s*([19])/);
+      if (ac) out.aircraft = ac[1] === '9' ? 'A359' : 'A35K'; // 900 → A359;1000 → A35K
       const r = g(/\(\s*([A-Z0-9]{4})\s*-\s*([A-Z0-9]{4})\s*\)/);
       if (r) { out.depIcao = r[1]; out.destIcao = r[2]; }
       const map = {
         pax: /PASSENGERS[^\d]{0,30}(\d+)/, cargo: /CARGO[^\d]{0,30}([\d,]+)/, tow: /\(AUW\)[^\d]{0,30}([\d,]+)/,
         tfg: /\(TFG\)[^\d]{0,30}([\d,.]+)/, ttg: /\(TT[GS5]\)[^\d]{0,30}([\d,.]+)/, enr: /\(ENR\)[^\d]{0,30}([\d,.]+)/,
         remaining: /FUEL REMAINING[^\d]{0,30}([\d,.]+)/, tfu: /TOTAL FUEL USED[^\d]{0,30}([\d,.]+)/,
-        lspd: /LANDING SPEED[^\d]{0,30}(\d+)/, lvs: /LANDING V\/?[S5][^\d-]{0,30}(-?\d+)/
+        lspd: /LANDING SPEED[^\d]{0,30}(\d+)/, lvs: /LANDING\s+V.{0,2}?[S5$][^\d-]{0,30}(-?\d+)/
       };
       Object.entries(map).forEach(([k, re]) => { const v = n(re); if (v !== null) out[k] = v; });
       const ft = g(/TOTAL FT[^\d]{0,12}(\d+)[^\d]{1,8}(\d+)/);
