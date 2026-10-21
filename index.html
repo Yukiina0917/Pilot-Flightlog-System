@@ -2201,6 +2201,57 @@
       });
     }
 
+    function parseByGeometry(words) {
+      const W = (words || []).map(w => ({ t: (w.text || '').toUpperCase().replace(/[−–—]/g, '-').trim(), x0: w.bbox.x0, x1: w.bbox.x1, y: (w.bbox.y0 + w.bbox.y1) / 2, h: w.bbox.y1 - w.bbox.y0 })).filter(w => w.t);
+      if (!W.length) return {};
+      const hs = W.map(w => w.h).sort((a, b) => a - b), mh = hs[Math.floor(hs.length / 2)] || 20;
+      const row = a => W.filter(w => w !== a && Math.abs(w.y - a.y) < mh * 0.7);
+      const NUM = /-?\d[\d,]*(?:\.\d+)?/;
+      const numAfter = (a) => {
+        const c = row(a).filter(w => w.x0 >= a.x1 - 6 && /\d/.test(w.t)).sort((p, q) => p.x0 - q.x0);
+        for (const w of c) { const m = w.t.match(NUM); if (m) return m[0].replace(/,/g, ''); }
+        return null;
+      };
+      const after = (re1, re2) => { // 先找 re1 的字,同一列右邊緊接 re2,回傳 re2 右邊的數字
+        for (const a of W.filter(w => re1.test(w.t))) {
+          const b = row(a).filter(w => w.x0 > a.x0 && re2.test(w.t)).sort((p, q) => p.x0 - q.x0)[0];
+          if (b) { const v = numAfter(b); if (v !== null) return v; }
+        }
+        return null;
+      };
+      const out = {};
+      const put = (k, v) => { if (v !== null && v !== undefined) out[k] = v; };
+      for (const [k, re] of [['tfg', /TFG/], ['ttg', /TTG/], ['enr', /ENR/], ['remaining', /REMAINING/]]) {
+        for (const a of W.filter(w => re.test(w.t))) { const v = numAfter(a); if (v !== null) { put(k, v); break; } }
+      }
+      // TOTAL FUEL USED:同一列有 TOTAL ... FUEL USED,取最右邊那個 USED
+      const useds = W.filter(w => /USED/.test(w.t)).filter(u => {
+        const r = row(u), fuel = r.find(w => /^FUEL/.test(w.t) && w.x1 <= u.x0 + 6 && u.x0 - w.x1 < mh * 3);
+        return fuel && r.some(w => /TOTAL/.test(w.t) && w.x1 <= fuel.x0 + 6);
+      }).sort((p, q) => q.x0 - p.x0);
+      if (useds[0]) put('tfu', numAfter(useds[0]));
+      put('lspd', after(/LANDING/, /SPEED/));
+      const vs = (() => { for (const a of W.filter(w => /LANDING/.test(w.t))) {
+        const b = row(a).filter(w => w.x0 > a.x0 && /V\/[S5]/.test(w.t)).sort((p, q) => p.x0 - q.x0)[0];
+        if (b) { const v = numAfter(b); if (v !== null) { const prev = row(b).some(w => w.x0 >= b.x1 - 6 && w.t === '-'); return (v.startsWith('-') || !prev) ? v : '-' + v; } }
+      } return null; })();
+      put('lvs', vs);
+      // TOTAL FT:取 FT 到下一個 TOTAL 之間的數字(中文「小時/分」會被忽略)
+      for (const ft of W.filter(w => /^FT\.?$/.test(w.t))) {
+        const r = row(ft);
+        if (!r.some(w => /TOTAL/.test(w.t) && w.x1 <= ft.x0 + 6)) continue;
+        const nextTotal = r.filter(w => /TOTAL/.test(w.t) && w.x0 > ft.x1).sort((p, q) => p.x0 - q.x0)[0];
+        const stop = nextTotal ? nextTotal.x0 : Infinity;
+        const txt = r.filter(w => w.x0 >= ft.x1 - 6 && w.x1 <= stop + 6).sort((p, q) => p.x0 - q.x0).map(w => w.t).join(' ');
+        const gs = txt.match(/\d+/g) || [];
+        if (gs.length >= 2 && Number(gs[1]) < 60) { out.hours = gs[0]; out.minutes = gs[1]; break; }
+        if (gs.length === 1 && gs[0].length >= 3 && gs[0].length <= 4 && Number(gs[0].slice(-2)) < 60) { out.hours = gs[0].slice(0, -2); out.minutes = gs[0].slice(-2); break; }
+      }
+      const dw = W.map(w => w.t.match(/(\d{1,2})[.,:](\d{1,2})[.,:](20\d{2})/)).find(Boolean);
+      if (dw) out.date = `${dw[3]}-${dw[2].padStart(2, '0')}-${dw[1].padStart(2, '0')}`;
+      return out;
+    }
+
     function parseFlightReport(raw) {
       const T = raw.toUpperCase().replace(/[−–—]/g, '-').replace(/[|]/g, ' ');
       const g = (re) => { const m = T.match(re); return m ? m : null; };
@@ -2208,7 +2259,8 @@
       const out = {};
       const d = g(/DATE[^\d]{0,12}(\d{1,2})\s*[.\-\/]\s*(\d{1,2})\s*[.\-\/]\s*(\d{4})/);
       if (d) out.date = `${d[3]}-${d[2].padStart(2, '0')}-${d[1].padStart(2, '0')}`;
-      const ac = g(/A\s?350\s*-?\s*(900|1000)/);
+      if (!out.date) { const d2 = g(/(\d{1,2})\s*[.\-\/]\s*(\d{1,2})\s*[.\-\/]\s*(20\d{2})/); if (d2) out.date = `${d2[3]}-${d2[2].padStart(2, '0')}-${d2[1].padStart(2, '0')}`; }
+      const ac = g(/A?\s?350\s*-?\s*(900|1000)/);
       if (ac) out.aircraft = ac[1] === '900' ? 'A359' : 'A35K';
       else if (/777\s*-?\s*300/.test(T)) out.aircraft = 'B77W';
       const r = g(/\(\s*([A-Z0-9]{4})\s*-\s*([A-Z0-9]{4})\s*\)/);
@@ -2231,18 +2283,27 @@
       if (!file) return;
       const btn = document.getElementById('ocr-btn'), st = document.getElementById('ocr-status');
       const show = (html, cls) => { st.className = 'text-xs leading-relaxed ' + cls; st.innerHTML = html; };
+      let worker = null;
       btn.disabled = true; btn.classList.add('opacity-60');
       try {
         show('載入識別程式庫...(第一次使用需要下載,請稍候)', 'text-slate-500');
         await loadTesseract();
         const canvas = await prepareReportCanvas(file);
-        const res = await Tesseract.recognize(canvas, 'eng', {
+        worker = await Tesseract.createWorker('eng', 1, {
           logger: m => { if (m.status === 'recognizing text') show('識別中 ' + Math.round(m.progress * 100) + '%', 'text-slate-500'); }
         });
-        const text = res.data.text || '';
-        console.log('[OCR 原文]\n' + text);
-        const f = parseFlightReport(text);
-
+        const run = async (psm) => { await worker.setParameters({ tessedit_pageseg_mode: psm }); return (await worker.recognize(canvas)).data; };
+        const combine = d => ({ ...parseFlightReport(d.text || ''), ...parseByGeometry(d.words) });
+        const d1 = await run('6');
+        let f = combine(d1), text = d1.text || '';
+        const fuelKeys = ['tfg', 'ttg', 'enr', 'remaining', 'tfu'];
+        if (fuelKeys.filter(k => f[k] !== undefined).length < 3) { // 第一輪燃油數字讀得太少,改用稀疏文字模式再讀一次
+          show('再識別一次...', 'text-slate-500');
+          const d2 = await run('11');
+          f = { ...combine(d2), ...f };
+          text += '\n--- 第二輪(稀疏模式)---\n' + (d2.text || '');
+        }
+        console.log('[OCR 原文]\n' + text, f);
         // ICAO → IATA 反查
         const toIata = icao => Object.keys(AIRPORT_MAP).find(k => AIRPORT_MAP[k] === icao) || '';
         const set = (id, v) => {
@@ -2278,6 +2339,7 @@
         console.error(err);
         show('識別失敗:' + err.message, 'text-red-600');
       } finally {
+        if (worker) { try { await worker.terminate(); } catch (e) {} }
         btn.disabled = false; btn.classList.remove('opacity-60');
       }
     }
