@@ -748,6 +748,8 @@
     // 地圖熱力圓圈的顏色分組(想增減機場,改這兩行的代號即可)
     const HUB_AIRPORTS = ['TPE', 'HKG', 'PVG', 'PEK'];   // 樞紐機場:紅色
     const KEY_AIRPORTS = ['ICN', 'NRT', 'KHH', 'CTU'];   // 重點機場:黃色
+    // 機場點點與熱力圓圈共用的顏色:樞紐紅、重點黃、其他藍
+    const airportColor = c => HUB_AIRPORTS.includes(c) ? '#ef4444' : KEY_AIRPORTS.includes(c) ? '#eab308' : '#23569d';
     let currentAnnouncementText = "歡迎使用 China Airlines FlightLog System！";
 
     function formatNumber(val) {
@@ -1468,8 +1470,8 @@
         const solid = c => ({ 0.1: c, 1.0: c });
         const layers = [];
         if (heatOther.length) layers.push(L.heatLayer(heatOther, { ...heatOpts, gradient: { 0.2: '#3b82f6', 0.5: '#eab308', 0.8: '#ef4444' } }));
-        if (heatKey.length) layers.push(L.heatLayer(heatKey, { ...heatOpts, gradient: solid('#eab308') }));
-        if (heatHub.length) layers.push(L.heatLayer(heatHub, { ...heatOpts, gradient: solid('#ef4444') }));
+        if (heatKey.length) layers.push(L.heatLayer(heatKey, { ...heatOpts, gradient: solid(airportColor('ICN')) }));
+        if (heatHub.length) layers.push(L.heatLayer(heatHub, { ...heatOpts, gradient: solid(airportColor('TPE')) }));
         heatLayer = L.layerGroup(layers).addTo(map);
       }
 
@@ -1499,7 +1501,7 @@
 
         L.circleMarker(coords, {
           radius: Math.min(4 + stat.total, 12),
-          fillColor: '#23569d',
+          fillColor: airportColor(code),
           color: '#ffffff',
           weight: 2,
           fillOpacity: 0.9
@@ -2627,7 +2629,7 @@
           if (!a || !b) continue;
           const wa = wrapCoords(a), wb = wrapCoords(b);
           getSplitGreatCircleArcs(wa, wb).forEach(arc => L.polyline(arc, { color: '#23569d', weight: 2, opacity: 0.75, dashArray: '5, 5' }).addTo(replayLayer));
-          L.circleMarker(wb, { radius: 5, fillColor: '#23569d', color: '#fff', weight: 2, fillOpacity: 0.9 }).addTo(replayLayer);
+          L.circleMarker(wb, { radius: 5, fillColor: airportColor((f.destination_iata || '').toUpperCase()), color: '#fff', weight: 2, fillOpacity: 0.9 }).addTo(replayLayer);
           label.textContent = f.flight_date || '';
           await new Promise(r => setTimeout(r, delay));
         }
