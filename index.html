@@ -226,7 +226,22 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    // 啟用本機快取:重複開啟網站時,資料先從瀏覽器快取立刻顯示,同時在背景與伺服器同步
+    db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
     const auth = firebase.auth();
+
+    // 載入計時(只會印在瀏覽器主控台,不影響畫面)
+    const PERF = [];
+    const perfMark = (label) => PERF.push([label, Math.round(performance.now())]);
+    perfMark('程式載入');
+
+    // 表格內用的小圖示直接寫成 SVG,避免每次重繪都要讓 lucide 替換數百個圖示
+    const ICON = {
+      svg: (inner, cls) => `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="${cls}">${inner}</svg>`,
+      arrow: cls => ICON.svg('<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>', cls),
+      pencil: cls => ICON.svg('<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/>', cls),
+      trash: cls => ICON.svg('<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>', cls)
+    };
 
     // 每位使用者的資料都放在 users/{uid}/ 底下
     let currentUser = null;
@@ -435,6 +450,7 @@
                       </button>
                     </div>
                   </th>
+                  <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">航線</th>
                   <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">飛行時間</th>
                   <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">高度 (FL)</th>
                   <th class="p-3 font-semibold text-center align-middle bg-[#23569d]">PAX</th>
@@ -581,7 +597,7 @@
             <i data-lucide="image-plus" class="w-4 h-4"></i><span>選擇照片</span>
           </button>
           <button type="button" id="avatar-remove-btn" onclick="removeAvatar()" class="py-2 px-3 rounded-lg font-medium bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 text-sm flex items-center justify-center gap-1.5">
-            <i data-lucide="trash-2" class="w-4 h-4"></i><span>移除</span>
+            ${ICON.trash('w-4 h-4')}<span>移除</span>
           </button>
         </div>
         <div class="flex gap-3 w-full">
@@ -650,6 +666,15 @@
               <option value="B77W">B77W</option> 
             </select>
           </div>
+        </div>
+        <div class="flex items-center justify-between gap-3">
+          <label class="text-xs font-medium text-slate-600">航線類型</label>
+          <div id="route-switch" class="relative flex w-44 bg-slate-200 rounded-full p-0.5 text-xs font-semibold select-none">
+            <div id="route-knob" class="absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] rounded-full bg-white shadow transition-transform duration-200"></div>
+            <button type="button" data-v="gc" onclick="setRouteType('gc')" class="relative z-10 flex-1 py-1 rounded-full">大圓</button>
+            <button type="button" data-v="real" onclick="setRouteType('real')" class="relative z-10 flex-1 py-1 rounded-full">現實</button>
+          </div>
+          <input type="hidden" id="f-route-type" value="gc">
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div>
@@ -744,6 +769,7 @@
     let selectedFilterDest = '';
     let selectedMapYear = 'ALL';
     let map, routeLayerGroup, heatLayer;
+    let mapRenderSeq = 0; // 地圖重繪的序號:新的一輪開始後,舊的一輪會自動中止,避免重疊重畫
 
     // 地圖熱力圓圈的顏色分組(想增減機場,改這兩行的代號即可)
     const HUB_AIRPORTS = ['TPE', 'HKG', 'PVG', 'PEK'];   // 樞紐機場:紅色
@@ -1388,6 +1414,7 @@
       if (!map || !routeLayerGroup) return;
       routeLayerGroup.clearLayers();
       if (heatLayer) map.removeLayer(heatLayer);
+      const seq = ++mapRenderSeq;
 
       // 年份過濾
       let targetFlights = flightList;
@@ -1425,6 +1452,7 @@
         try {
           const rawStart = await fetchAirportCoords(dep);
           const rawEnd = await fetchAirportCoords(dest);
+          if (seq !== mapRenderSeq) return;
           const startCoords = rawStart ? wrapCoords(rawStart) : null;
           const endCoords = rawEnd ? wrapCoords(rawEnd) : null;
 
@@ -1450,10 +1478,12 @@
       }
 
       // 1. 繪製熱力圖層 (Leaflet.heat)
+      if (seq !== mapRenderSeq) return;
       const airportCodes = Object.keys(airportStats);
       const heatHub = [], heatKey = [], heatOther = [];
       for (const code of airportCodes) {
         const rawCoords = await fetchAirportCoords(code);
+        if (seq !== mapRenderSeq) return;
         const coords = rawCoords ? wrapCoords(rawCoords) : null;
         if (coords) {
           // 強度權重以造訪次數為基礎進行正則化
@@ -1478,6 +1508,7 @@
       // 2. 繪製機場標記點與互動數據卡片
       for (const code of airportCodes) {
         const rawCoords = await fetchAirportCoords(code);
+        if (seq !== mapRenderSeq) return;
         if (!rawCoords) continue;
         const coords = wrapCoords(rawCoords);
 
@@ -1619,6 +1650,7 @@
     function initFirestoreListener() {
       ucol("flights")
         .onSnapshot(async (snapshot) => {
+          perfMark('收到資料(' + snapshot.size + ' 筆,' + (snapshot.metadata.fromCache ? '來自快取' : '來自伺服器') + ')');
           flights = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
@@ -1647,8 +1679,9 @@
 
     function openCreateModal() {
       document.getElementById('flight-form').reset();
+      setRouteType('gc');
       document.getElementById('ocr-status').className = 'hidden';
-      document.querySelectorAll('#flight-form .ring-emerald-300').forEach(el => el.classList.remove('ring-2', 'ring-emerald-300'));
+      document.querySelectorAll('#flight-form .ring-emerald-300, #flight-form .ring-amber-400').forEach(el => el.classList.remove('ring-2', 'ring-emerald-300', 'ring-amber-400'));
       document.getElementById('f-doc-id').value = '';
       document.getElementById('modal-title').querySelector('span').textContent = '新增飛行紀錄';
       document.getElementById('f-submit-btn').textContent = '儲存紀錄';
@@ -1667,6 +1700,7 @@
       document.getElementById('f-dest-iata').value = target.destination_iata || '';
       document.getElementById('f-dest-icao').value = target.destination_icao || '';
       const toNum = v => { const n = parseFloat(String(v ?? '').replace(/[^0-9.\-]/g, '')); return isNaN(n) ? '' : n; };
+      setRouteType(target.route_type || '');
       document.getElementById('f-pax').value = target.passengers ?? '';
       document.getElementById('f-cargo').value = target.cargo ?? '';
       document.getElementById('f-tow').value = target.takeoff_weight ?? '';
@@ -1715,6 +1749,9 @@
         flight_hours: (parseInt(document.getElementById('f-hours').value) || 0) + ((parseInt(document.getElementById('f-minutes').value) || 0) / 60)
       };
 
+      const routeType = document.getElementById('f-route-type').value;
+      if (routeType) record.route_type = routeType; // 沒選(舊紀錄)就不寫入,維持「未紀錄」
+
       try {
         if (docId) await ucol("flights").doc(docId).update(record);
         else {
@@ -1754,17 +1791,18 @@
             <div class="flex items-center gap-2 min-w-0">
               <span class="text-xs font-medium text-slate-500">${f.flight_date || '—'}</span>
               <span class="bg-blue-50 text-blue-600 border border-blue-200 px-2 py-0.5 rounded text-xs font-semibold">${f.aircraft_type || '—'}</span>
+              ${routeBadge(f.route_type)}
             </div>
             <div class="inline-flex items-center shrink-0">
-              <button class="text-slate-400 active:text-blue-600 p-2 rounded-lg" title="編輯" onclick="editFlight('${f.id}')"><i data-lucide="pencil" class="w-4 h-4"></i></button>
-              <button class="text-slate-400 active:text-red-500 p-2 rounded-lg" title="刪除" onclick="deleteFlight('${f.id}')"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+              <button class="text-slate-400 active:text-blue-600 p-2 rounded-lg" title="編輯" onclick="editFlight('${f.id}')">${ICON.pencil('w-4 h-4')}</button>
+              <button class="text-slate-400 active:text-red-500 p-2 rounded-lg" title="刪除" onclick="deleteFlight('${f.id}')">${ICON.trash('w-4 h-4')}</button>
             </div>
           </div>
 
           <div class="flex items-center justify-between mt-1">
             <div class="flex items-center gap-3">
               ${airport(f.departure_iata, f.departure_icao)}
-              <i data-lucide="arrow-right" class="w-4 h-4 text-slate-400"></i>
+              ${ICON.arrow('w-4 h-4 text-slate-400')}
               ${airport(f.destination_iata, f.destination_icao)}
             </div>
             <div class="text-right">
@@ -1887,8 +1925,9 @@
           <td class="p-3 text-slate-800 font-medium text-center align-middle">${f.flight_date || '—'}</td>
           <td class="p-3 text-center align-middle"><span class="bg-blue-50 text-blue-600 border border-blue-200 px-2 py-0.5 rounded text-xs font-semibold">${f.aircraft_type || '—'}</span></td>
           <td class="p-3 font-semibold text-slate-800 text-center align-middle">${formatAirport(f.departure_iata, f.departure_icao)}</td>
-          <td class="p-3 text-slate-400 text-center px-1 align-middle"><i data-lucide="arrow-right" class="w-3.5 h-3.5 inline-block align-middle"></i></td>
+          <td class="p-3 text-slate-400 text-center px-1 align-middle">${ICON.arrow('w-3.5 h-3.5 inline-block align-middle')}</td>
           <td class="p-3 font-semibold text-slate-800 text-center align-middle">${formatAirport(f.destination_iata, f.destination_icao)}</td>
+          <td class="p-3 text-center align-middle">${routeBadge(f.route_type)}</td>
           <td class="p-3 font-bold text-center align-middle" style="color: #23569d;">${formatHoursToHM(f.flight_hours)}</td>
           <td class="p-3 text-center align-middle">${formattedFL}</td>
           <td class="p-3 text-center align-middle">${formatNumber(f.passengers)}</td>
@@ -1903,8 +1942,8 @@
           <td class="p-3 text-slate-600 text-center align-middle">${formattedLvs}</td>
           <td class="p-3 text-center align-middle">
             <div class="inline-flex items-center gap-1">
-              <button class="text-slate-400 hover:text-blue-600 p-1 rounded hover:bg-slate-100 transition-all" title="編輯" onclick="editFlight('${f.id}')"><i data-lucide="pencil" class="w-4 h-4"></i></button>
-              <button class="text-slate-400 hover:text-red-500 p-1 rounded hover:bg-slate-100 transition-all" title="刪除" onclick="deleteFlight('${f.id}')"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+              <button class="text-slate-400 hover:text-blue-600 p-1 rounded hover:bg-slate-100 transition-all" title="編輯" onclick="editFlight('${f.id}')">${ICON.pencil('w-4 h-4')}</button>
+              <button class="text-slate-400 hover:text-red-500 p-1 rounded hover:bg-slate-100 transition-all" title="刪除" onclick="deleteFlight('${f.id}')">${ICON.trash('w-4 h-4')}</button>
             </div>
           </td>
         `;
@@ -1939,7 +1978,10 @@
       }
       
       lucide.createIcons();
+      perfMark('表格完成');
       await updateMapRoutes(filteredFlights);
+      perfMark('地圖完成');
+      if (!window.__perfShown) { window.__perfShown = true; console.table(PERF.map(([l, t]) => ({ 階段: l, '距離頁面開啟(ms)': t }))); }
     }
 
     async function deleteFlight(docId) {
@@ -1979,7 +2021,7 @@
         'flight_date', 'aircraft_type', 'departure_iata', 'departure_icao', 
         'destination_iata', 'destination_icao', 'flight_hours', 'flight_level', 
         'passengers', 'cargo', 'takeoff_weight', 'tfg', 'ttg', 'enr', 
-        'remaining', 'tfu', 'landing_speed', 'landing_vs'
+        'remaining', 'tfu', 'landing_speed', 'landing_vs', 'route_type'
       ];
 
       const csvRows = [headers.join(',')];
@@ -2148,10 +2190,15 @@
     }
 
     auth.onAuthStateChanged(async (user) => {
+      perfMark('登入狀態確認');
       if (!user) {
         if (appStarted) return location.reload();
-        return showLogin(loginMsg);
+        let m = loginMsg;
+        try { m = m || sessionStorage.getItem('flightlog_login_msg') || ''; sessionStorage.removeItem('flightlog_login_msg'); } catch (e) {}
+        return showLogin(m);
       }
+      currentUser = user;
+      startApp(); // 先開始載入資料(畫面仍被登入層蓋住),邀請檢查同時進行,省掉一次等待
       try {
         const invite = await db.collection('invites').doc((user.email || '').toLowerCase()).get();
         if (!invite.exists) throw new Error('not-invited');
@@ -2159,11 +2206,11 @@
         console.error('邀請檢查失敗:', e);
         if (e.message === 'not-invited') loginMsg = '此帳號(' + user.email + ')不在邀請名單上。請確認 invites 裡的文件 ID 與此信箱完全一致(全小寫)。';
         else loginMsg = '讀取邀請名單失敗(' + (e.code || 'unknown') + '):' + e.message;
+        try { sessionStorage.setItem('flightlog_login_msg', loginMsg); } catch (e2) {}
         return auth.signOut();
       }
-      currentUser = user;
+      perfMark('邀請檢查完成');
       document.getElementById('login-overlay').classList.add('hidden');
-      startApp();
     });
 
     function startApp() {
@@ -2233,13 +2280,17 @@
           x.drawImage(img, 0, 0, c.width, c.height);
           URL.revokeObjectURL(img.src);
           const data = x.getImageData(0, 0, c.width, c.height);
-          const hiData = new ImageData(new Uint8ClampedArray(data.data), c.width, c.height);
-          cleanReportPixels(data.data, c.width, c.height, c.height / 721, 150);
+          const unit = c.height / 721;
+          // 另外做三張不同黑白門檻的圖,給 Landing V/S 多次讀取用
+          c.vsCanvases = [170, 190, 210].map(thr => {
+            const d = new ImageData(new Uint8ClampedArray(data.data), c.width, c.height);
+            cleanReportPixels(d.data, c.width, c.height, unit, thr);
+            const cv = document.createElement('canvas'); cv.width = c.width; cv.height = c.height;
+            cv.getContext('2d').putImageData(d, 0, 0);
+            return cv;
+          });
+          cleanReportPixels(data.data, c.width, c.height, unit, 150);
           x.putImageData(data, 0, 0);
-          cleanReportPixels(hiData.data, c.width, c.height, c.height / 721, 190);
-          const hi = document.createElement('canvas'); hi.width = c.width; hi.height = c.height;
-          hi.getContext('2d').putImageData(hiData, 0, 0);
-          c.hi = hi;
           resolve(c);
         };
         img.src = URL.createObjectURL(file);
@@ -2247,6 +2298,15 @@
     }
 
     // 以「降落速度」為基準,找出正下方 Landing V/S 那一列的數字範圍(用來單獨放大重讀)
+    // 多次讀取結果投票:回傳得票最多的數字;沒有過半就標記為「不確定」
+    function tallyVotes(reads) {
+      if (!reads.length) return null;
+      const cnt = {};
+      reads.forEach(r => { cnt[r] = (cnt[r] || 0) + 1; });
+      const ranked = Object.entries(cnt).sort((a, b) => (b[1] - a[1]) || (b[0].length - a[0].length)); // 同票時取位數多的(讀錯通常是漏掉數字)
+      return { value: ranked[0][0], count: ranked[0][1], total: reads.length, uncertain: ranked[0][1] * 2 <= reads.length, candidates: ranked.slice(0, 3).map(r => r[0]) };
+    }
+
     function locateVsCrop(words) {
       const W = (words || []).map(w => ({ t: (w.text || '').toUpperCase().trim(), x0: w.bbox.x0, x1: w.bbox.x1, y: (w.bbox.y0 + w.bbox.y1) / 2, h: w.bbox.y1 - w.bbox.y0 })).filter(w => w.t);
       if (!W.length) return null;
@@ -2402,21 +2462,34 @@
           f = { ...combine(d2), ...f };
           text += '\n--- 第二輪(稀疏模式)---\n' + (d2.text || '');
         }
-        // Landing V/S 的數字小又細(尤其「1」),整頁一起讀容易漏字,所以另外把那一格放大、單獨重讀
+        // Landing V/S 的數字小又細(尤其「1」),所以換不同黑白門檻、不同放大倍率各讀一次,再投票決定
+        let vsNote = null;
         try {
           const box = locateVsCrop(d1.words) || (extraWords ? locateVsCrop(extraWords) : null);
-          if (box && canvas.hi) {
-            const sw = Math.min(box.x1, canvas.hi.width) - box.x0, sh = box.y1 - box.y0;
-            const cc = document.createElement('canvas'); cc.width = sw * 3 + 60; cc.height = sh * 3 + 60;
-            const cx = cc.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cc.width, cc.height);
-            cx.imageSmoothingQuality = 'high';
-            cx.drawImage(canvas.hi, box.x0, box.y0, sw, sh, 30, 30, sw * 3, sh * 3);
+          if (box && canvas.vsCanvases) {
+            const reads = [];
+            if (f.lvs !== undefined) reads.push(String(f.lvs).replace('-', '')); // 整頁讀到的那一票
             await worker.setParameters({ tessedit_pageseg_mode: '7' });
-            const m = ((await worker.recognize(cc)).data.text || '').match(/\d{1,4}/);
-            if (m) f.lvs = m[0];
+            for (const src of canvas.vsCanvases) {
+              for (const scale of [3, 4]) {
+                const sw = Math.min(box.x1, src.width) - box.x0, sh = box.y1 - box.y0;
+                const cc = document.createElement('canvas'); cc.width = sw * scale + 60; cc.height = sh * scale + 60;
+                const cx = cc.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cc.width, cc.height);
+                cx.imageSmoothingQuality = 'high';
+                cx.drawImage(src, box.x0, box.y0, sw, sh, 30, 30, sw * scale, sh * scale);
+                const m = ((await worker.recognize(cc)).data.text || '').match(/\d{1,4}/);
+                if (m) reads.push(m[0]);
+              }
+            }
+            const v = tallyVotes(reads);
+            if (v) {
+              f.lvs = v.value;
+              if (v.uncertain) vsNote = `Landing V/S 幾次讀取的結果不一致(候選:${v.candidates.join('、')}),請特別核對`;
+            }
           }
         } catch (e) { console.warn('Landing V/S 重讀失敗', e); }
         console.log('[OCR 原文]\n' + text, f);
+        if (f.lvs !== undefined && vsNote === null && (Math.abs(Number(f.lvs)) < 30 || Math.abs(Number(f.lvs)) > 1500)) vsNote = `Landing V/S 的數值(${f.lvs})不太尋常,請核對`;
         if (f.lvs !== undefined && Number(f.lvs) > 0) f.lvs = '-' + f.lvs; // 降落下降率一定是負值,沒讀到負號就補上
         // ICAO → IATA 反查
         const toIata = icao => Object.keys(AIRPORT_MAP).find(k => AIRPORT_MAP[k] === icao) || '';
@@ -2427,7 +2500,7 @@
           el.addEventListener('input', () => el.classList.remove('ring-2', 'ring-emerald-300'), { once: true });
           return true;
         };
-        document.querySelectorAll('#flight-form .ring-emerald-300').forEach(el => el.classList.remove('ring-2', 'ring-emerald-300'));
+        document.querySelectorAll('#flight-form .ring-emerald-300, #flight-form .ring-amber-400').forEach(el => el.classList.remove('ring-2', 'ring-emerald-300', 'ring-amber-400'));
         const done = [], miss = [];
         const track = (label, ok) => (ok ? done : miss).push(label);
         track('日期', set('f-date', f.date));
@@ -2445,6 +2518,12 @@
         const warn = [];
         if (f.depIcao && !depI) warn.push(`找不到 ${f.depIcao} 對應的 IATA,請手動填起飛機場 IATA`);
         if (f.destIcao && !destI) warn.push(`找不到 ${f.destIcao} 對應的 IATA,請手動填降落機場 IATA`);
+        if (vsNote) {
+          const el = document.getElementById('f-lvs');
+          el.classList.remove('ring-emerald-300'); el.classList.add('ring-2', 'ring-amber-400');
+          el.addEventListener('input', () => el.classList.remove('ring-2', 'ring-amber-400'), { once: true });
+          warn.push(vsNote);
+        }
         show(`<div class="text-emerald-700 font-semibold">已填入 ${done.length} 個欄位(綠框),請逐項核對後再儲存。</div>`
           + (miss.length ? `<div class="text-amber-700">未識別:${miss.join('、')}</div>` : '')
           + warn.map(w => `<div class="text-red-600">${w}</div>`).join('')
@@ -2528,6 +2607,23 @@
         profileData = { ...(profileData || {}), goals };
         renderStats();
       } catch (e) { alert('儲存失敗:' + e.message); }
+    }
+
+    // ===== 航線類型:大圓 / 現實 =====
+    function setRouteType(v) {
+      document.getElementById('f-route-type').value = v;
+      const knob = document.getElementById('route-knob');
+      knob.style.opacity = v ? '1' : '0'; // 舊紀錄沒有記錄時,兩邊都不亮
+      knob.style.transform = v === 'real' ? 'translateX(100%)' : 'translateX(0)';
+      document.querySelectorAll('#route-switch button').forEach(b => {
+        b.classList.toggle('text-slate-800', b.dataset.v === v);
+        b.classList.toggle('text-slate-500', b.dataset.v !== v);
+      });
+    }
+    function routeBadge(t) {
+      if (t === 'gc') return '<span class="px-2 py-0.5 rounded text-xs font-semibold bg-indigo-50 text-indigo-600 border border-indigo-200">大圓</span>';
+      if (t === 'real') return '<span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200">現實</span>';
+      return '<span class="text-xs text-slate-400">未紀錄</span>';
     }
 
     // ===== 共用:視窗關閉動畫 / 手機版頭像 =====
