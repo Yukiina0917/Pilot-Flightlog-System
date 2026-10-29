@@ -744,6 +744,10 @@
     let selectedFilterDest = '';
     let selectedMapYear = 'ALL';
     let map, routeLayerGroup, heatLayer;
+
+    // 地圖熱力圓圈的顏色分組(想增減機場,改這兩行的代號即可)
+    const HUB_AIRPORTS = ['TPE', 'HKG', 'PVG', 'PEK'];   // 樞紐機場:紅色
+    const KEY_AIRPORTS = ['ICN', 'NRT', 'KHH', 'CTU'];   // 重點機場:黃色
     let currentAnnouncementText = "歡迎使用 China Airlines FlightLog System！";
 
     function formatNumber(val) {
@@ -1445,23 +1449,28 @@
 
       // 1. 繪製熱力圖層 (Leaflet.heat)
       const airportCodes = Object.keys(airportStats);
+      const heatHub = [], heatKey = [], heatOther = [];
       for (const code of airportCodes) {
         const rawCoords = await fetchAirportCoords(code);
         const coords = rawCoords ? wrapCoords(rawCoords) : null;
         if (coords) {
           // 強度權重以造訪次數為基礎進行正則化
           const intensity = Math.min(airportStats[code].total / 10, 1.0);
-          heatData.push([coords[0], coords[1], intensity]);
+          const pt = [coords[0], coords[1], intensity];
+          heatData.push(pt);
+          (HUB_AIRPORTS.includes(code) ? heatHub : KEY_AIRPORTS.includes(code) ? heatKey : heatOther).push(pt);
         }
       }
 
       if (heatData.length > 0 && typeof L.heatLayer === 'function') {
-        heatLayer = L.heatLayer(heatData, {
-          radius: 25,
-          blur: 15,
-          maxZoom: 10,
-          gradient: { 0.2: '#3b82f6', 0.5: '#eab308', 0.8: '#ef4444' }
-        }).addTo(map);
+        // 三組各自一層熱力圖:其他機場維持原本的藍黃紅漸層,樞紐固定紅色、重點固定黃色
+        const heatOpts = { radius: 25, blur: 15, maxZoom: 10 };
+        const solid = c => ({ 0.1: c, 1.0: c });
+        const layers = [];
+        if (heatOther.length) layers.push(L.heatLayer(heatOther, { ...heatOpts, gradient: { 0.2: '#3b82f6', 0.5: '#eab308', 0.8: '#ef4444' } }));
+        if (heatKey.length) layers.push(L.heatLayer(heatKey, { ...heatOpts, gradient: solid('#eab308') }));
+        if (heatHub.length) layers.push(L.heatLayer(heatHub, { ...heatOpts, gradient: solid('#ef4444') }));
+        heatLayer = L.layerGroup(layers).addTo(map);
       }
 
       // 2. 繪製機場標記點與互動數據卡片
