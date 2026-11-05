@@ -230,6 +230,13 @@
     db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
     const auth = firebase.auth();
 
+    // leaflet-heat 每次重畫都會讀取畫布像素;宣告 willReadFrequently 讓瀏覽器改用適合讀取的方式處理
+    const _getCtx = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (type, opts) {
+      if (type === '2d') opts = Object.assign({ willReadFrequently: true }, opts || {});
+      return _getCtx.call(this, type, opts);
+    };
+
     // 載入計時(只會印在瀏覽器主控台,不影響畫面)
     const PERF = [];
     const perfMark = (label) => PERF.push([label, Math.round(performance.now())]);
@@ -517,7 +524,7 @@
       </div>
       <div id="stats-body"></div>
       <div class="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-3 mt-1">
-        <button type="button" onclick="downloadReviewCard()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1.5"><i data-lucide="image-down" class="w-3.5 h-3.5"></i>下載回顧圖卡</button>
+        <button type="button" onclick="downloadReviewCard()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1.5"><i data-lucide="download" class="w-3.5 h-3.5"></i>下載回顧圖卡</button>
         <button type="button" onclick="printLogbook()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1.5"><i data-lucide="printer" class="w-3.5 h-3.5"></i>列印飛行履歷</button>
       </div>
     </div>
@@ -1289,12 +1296,16 @@
       }
     }
 
+    let netLookups = 0;            // 本次開啟網站,往網路查了幾次機場座標(計時用)
+    const AIRPORT_MISSING = new Set(); // 查不到座標的機場:記住,不要每個航班都重查一次
     async function fetchAirportCoords(code) {
       if (!code) return null;
       const iata = code.trim().toUpperCase();
       if (AIRPORT_COORDS[iata]) return AIRPORT_COORDS[iata];
+      if (AIRPORT_MISSING.has(iata)) return null;
 
       try {
+        netLookups++;
         const res = await fetch(`https://port-api.com/airport/iata/${iata}`);
         if (res.ok) {
           const data = await res.json();
@@ -1307,6 +1318,7 @@
       } catch (e) {
         console.warn(`無效機場: ${iata}`, e);
       }
+      AIRPORT_MISSING.add(iata);
       return null;
     }
 
@@ -1427,6 +1439,7 @@
       const bounds = [];
       const heatData = [];
 
+      const routeGroups = {}; // 以「出發→抵達」為單位合併重複的航線
       for (const f of targetFlights) {
         const dep = f.departure_iata;
         const dest = f.destination_iata;
@@ -1448,11 +1461,20 @@
         // 紀錄航線熱度與頻率
         const routeKey = [dep, dest].sort().join('-');
         routeCounts[routeKey] = (routeCounts[routeKey] || 0) + 1;
+        const gk = dep + '>' + dest;
+        (routeGroups[gk] = routeGroups[gk] || { dep, dest, routeKey, n: 0 }).n++;
+      }
 
+      // 一次把用到的機場座標備齊(平行查詢)
+      await Promise.all(Object.keys(airportStats).map(c => fetchAirportCoords(c)));
+      perfMark('座標備齊(網路查詢 ' + netLookups + ' 次)');
+      if (seq !== mapRenderSeq) return;
+
+      // 同一個方向的重複航線只畫一條;粗細依來回總次數,透明度依重複次數疊加(外觀與逐條重疊繪製相同)
+      for (const g of Object.values(routeGroups)) {
         try {
-          const rawStart = await fetchAirportCoords(dep);
-          const rawEnd = await fetchAirportCoords(dest);
-          if (seq !== mapRenderSeq) return;
+          const rawStart = await fetchAirportCoords(g.dep);
+          const rawEnd = await fetchAirportCoords(g.dest);
           const startCoords = rawStart ? wrapCoords(rawStart) : null;
           const endCoords = rawEnd ? wrapCoords(rawEnd) : null;
 
@@ -1460,22 +1482,24 @@
             bounds.push(startCoords, endCoords);
 
             // 大圓航線劃設與粗細調整
-            const arcWeight = Math.min(1 + routeCounts[routeKey] * 0.8, 6);
+            const arcWeight = Math.min(1 + routeCounts[g.routeKey] * 0.8, 6);
+            const arcOpacity = 1 - Math.pow(0.25, g.n);
             const splitArcs = getSplitGreatCircleArcs(startCoords, endCoords, 80);
 
             splitArcs.forEach(arc => {
               L.polyline(arc, {
                 color: '#23569d',
                 weight: arcWeight,
-                opacity: 0.75,
+                opacity: arcOpacity,
                 dashArray: '5, 5'
               }).addTo(routeLayerGroup);
             });
           }
         } catch (err) {
-          console.error(`繪製 ${dep} -> ${dest} 失敗:`, err);
+          console.error(`繪製 ${g.dep} -> ${g.dest} 失敗:`, err);
         }
       }
+      perfMark('航線繪製完成(' + Object.keys(routeGroups).length + ' 條,原 ' + targetFlights.length + ' 筆航班)');
 
       // 1. 繪製熱力圖層 (Leaflet.heat)
       if (seq !== mapRenderSeq) return;
@@ -1504,6 +1528,7 @@
         if (heatHub.length) layers.push(L.heatLayer(heatHub, { ...heatOpts, gradient: solid(airportColor('TPE')) }));
         heatLayer = L.layerGroup(layers).addTo(map);
       }
+      perfMark('熱力圖完成');
 
       // 2. 繪製機場標記點與互動數據卡片
       for (const code of airportCodes) {
