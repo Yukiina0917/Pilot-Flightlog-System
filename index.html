@@ -2687,6 +2687,8 @@
 
     // ===== 年度回顧圖卡(下載 PNG,1080×1920) =====
     let statsSnap = null;
+    // 圖卡「最常降落」排行要排除的機場(只影響這個排行,不影響機場數與距離)
+    const REVIEW_EXCLUDE_ARRIVALS = ['HKG', 'TPE', 'PEK', 'PVG'];
 
     // 整理圖卡要用的數據(兩種機型合併計算)
     async function buildReviewStats() {
@@ -2720,7 +2722,7 @@
         flights: list.length, hours: list.reduce((s, f) => s + num(f.flight_hours), 0), km: Math.round(km),
         airports: codes.size, newAirports,
         pax: list.reduce((s, f) => s + num(f.passengers), 0), cargo: list.reduce((s, f) => s + num(f.cargo), 0),
-        topDep: deps.slice(0, 3), topArr: arrs.slice(0, 3), softest,
+        topDep: deps.slice(0, 3), topArr: arrs.filter(([c]) => !REVIEW_EXCLUDE_ARRIVALS.includes(c)).slice(0, 3), softest,
         from: dates[0] || '', to: dates[dates.length - 1] || ''
       };
     }
@@ -2846,10 +2848,11 @@
 
       // ---- 最常起飛 / 最常降落 ----
       const ty = 950, tw = 450;
-      [['最常起飛', 'TOP DEPARTURES', st.topDep, 80], ['最常降落', 'TOP ARRIVALS', st.topArr, 550]].forEach(([zh, en, rows, px]) => {
+      [['最常起飛', 'TOP DEPARTURES', st.topDep, 80, ''], ['最常降落', 'TOP ARRIVALS', st.topArr, 550, '不含 ' + REVIEW_EXCLUDE_ARRIVALS.join(' · ')]].forEach(([zh, en, rows, px, note]) => {
         panel(px, ty, tw, 404, 30);
         text(en, px + 32, ty + 44, { w: 700, s: 17, color: GOLD, ls: 4 });
         text(zh + ' TOP 3', px + 32, ty + 82, { w: 700, s: 32 });
+        if (note) text(note, px + 32, ty + 114, { w: 500, s: 19, color: BLUE });
         if (!rows.length) return empty('尚無資料', px + 32, ty + 190);
         rows.forEach(([code, n], i) => {
           const ry = ty + 168 + i * 84;
