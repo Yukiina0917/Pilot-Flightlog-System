@@ -2685,32 +2685,216 @@
       }).join('');
     }
 
-    // ===== 年度回顧圖卡(下載 PNG) =====
+    // ===== 年度回顧圖卡(下載 PNG,1080×1920) =====
     let statsSnap = null;
-    function downloadReviewCard() {
-      if (!statsSnap) return;
-      const d = statsSnap, W = 1080, H = 1350;
+
+    // 整理圖卡要用的數據(兩種機型合併計算)
+    async function buildReviewStats() {
+      const d = statsSnap, list = d.list;
+      const up = v => (v || '').toUpperCase(), num = v => Number(v) || 0;
+      const rank = arr => { const m = {}; arr.forEach(c => { if (c) m[c] = (m[c] || 0) + 1; }); return Object.entries(m).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])); };
+      const deps = rank(list.map(f => up(f.departure_iata))), arrs = rank(list.map(f => up(f.destination_iata)));
+      const codes = new Set([...deps, ...arrs].map(x => x[0]));
+
+      // 新解鎖機場:在「全部紀錄」中,第一次造訪的日期落在這段期間內
+      let newAirports = null;
+      if (d.prefix) {
+        const first = {};
+        flights.forEach(f => { const dt = f.flight_date || ''; [up(f.departure_iata), up(f.destination_iata)].forEach(c => { if (c && (!first[c] || dt < first[c])) first[c] = dt; }); });
+        newAirports = [...codes].filter(c => (first[c] || '').startsWith(d.prefix)).length;
+      }
+
+      // 總飛行距離:每個航班都以兩機場間的大圓距離計算(不管實際飛的是不是現實航路)
+      const coords = {};
+      await Promise.all([...codes].map(async c => { try { coords[c] = await fetchAirportCoords(c); } catch (e) {} }));
+      let km = 0;
+      list.forEach(f => { const a = coords[up(f.departure_iata)], b = coords[up(f.destination_iata)]; if (a && b) km += distKm(a, b); });
+
+      // 落地最軟:Landing V/S 絕對值最小的前三名(沒填或填 0 的不算)
+      const softest = list.filter(f => f.landing_vs !== '' && f.landing_vs != null && num(f.landing_vs) !== 0)
+        .sort((a, b) => Math.abs(num(a.landing_vs)) - Math.abs(num(b.landing_vs))).slice(0, 3)
+        .map(f => ({ code: up(f.destination_iata), from: up(f.departure_iata), vs: num(f.landing_vs), date: f.flight_date || '' }));
+
+      const dates = list.map(f => f.flight_date).filter(Boolean).sort();
+      return {
+        flights: list.length, hours: list.reduce((s, f) => s + num(f.flight_hours), 0), km: Math.round(km),
+        airports: codes.size, newAirports,
+        pax: list.reduce((s, f) => s + num(f.passengers), 0), cargo: list.reduce((s, f) => s + num(f.cargo), 0),
+        topDep: deps.slice(0, 3), topArr: arrs.slice(0, 3), softest,
+        from: dates[0] || '', to: dates[dates.length - 1] || ''
+      };
+    }
+
+    function drawReviewCard(st, meta) {
+      const W = 1080, H = 1920;
       const c = document.createElement('canvas'); c.width = W; c.height = H;
       const x = c.getContext('2d');
-      const g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#2a67b8'); g.addColorStop(1, '#13305f');
+      const F = '"DM Sans", "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif';
+      const GOLD = '#E6C65A', GOLD2 = '#B08A1E', BLUE = '#9DBDE8';
+      const font = (w, s) => { x.font = `${w} ${s}px ${F}`; };
+      const spacing = px => { if ('letterSpacing' in x) x.letterSpacing = px + 'px'; };
+      const text = (t, px, py, { w = 500, s = 28, color = '#fff', align = 'left', ls = 0, base = 'middle' } = {}) => {
+        font(w, s); spacing(ls); x.fillStyle = color; x.textAlign = align; x.textBaseline = base; x.fillText(t, px, py); spacing(0);
+      };
+      const fit = (t, w, s, maxW) => { font(w, s); while (s > 22 && x.measureText(t).width > maxW) { s -= 2; font(w, s); } return s; };
+      const fmt = n => Math.round(n).toLocaleString('en-US');
+      const panel = (px, py, w, h, r = 30, a = 0.10) => {
+        x.beginPath(); x.roundRect(px, py, w, h, r); x.fillStyle = `rgba(255,255,255,${a})`; x.fill();
+        x.strokeStyle = 'rgba(255,255,255,0.15)'; x.lineWidth = 2; x.stroke();
+      };
+      const goldGrad = (x0, x1) => { const g = x.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, '#F3D676'); g.addColorStop(1, GOLD2); return g; };
+      let seed = meta.seed || 7;
+      const rnd = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+
+      // ---- 背景:深藍漸層、柔光、雷達圈、星點、虛線航線 ----
+      let g = x.createLinearGradient(0, 0, W * 0.35, H);
+      g.addColorStop(0, '#0a1b38'); g.addColorStop(0.42, '#173f78'); g.addColorStop(1, '#07152b');
       x.fillStyle = g; x.fillRect(0, 0, W, H);
-      x.textAlign = 'center'; x.fillStyle = '#ffffff';
-      const F = 'DM Sans, "Noto Sans TC", "Microsoft JhengHei", sans-serif';
-      x.font = `600 40px ${F}`; x.fillStyle = '#E6C65A'; x.fillText(d.name, W / 2, 150);
-      x.fillStyle = '#ffffff'; x.font = `bold 84px ${F}`; x.fillText(d.title, W / 2, 270);
-      x.fillStyle = '#D4AF37'; [-45, -15, 15, 45].forEach(o => x.fillRect(W / 2 + o - 5, 320, 10, 54));
-      const cells = [['飛行時數', d.hours], ['飛行次數', d.count], ['造訪機場', d.airports], ['國家/地區', d.countries]];
-      cells.forEach(([label, val], i) => {
-        const cx = i % 2 ? 790 : 290, cy = i < 2 ? 560 : 820;
-        x.fillStyle = 'rgba(255,255,255,0.1)'; x.beginPath(); x.roundRect(cx - 220, cy - 120, 440, 210, 28); x.fill();
-        x.fillStyle = '#ffffff'; x.font = `bold 84px ${F}`; x.fillText(String(val), cx, cy + 10);
-        x.fillStyle = 'rgba(255,255,255,0.7)'; x.font = `500 34px ${F}`; x.fillText(label, cx, cy + 62);
+      g = x.createRadialGradient(W * 0.85, 240, 10, W * 0.85, 240, 720);
+      g.addColorStop(0, 'rgba(95,155,235,0.38)'); g.addColorStop(1, 'rgba(95,155,235,0)');
+      x.fillStyle = g; x.fillRect(0, 0, W, H);
+      g = x.createRadialGradient(W * 0.1, H * 0.78, 10, W * 0.1, H * 0.78, 700);
+      g.addColorStop(0, 'rgba(230,198,90,0.10)'); g.addColorStop(1, 'rgba(230,198,90,0)');
+      x.fillStyle = g; x.fillRect(0, 0, W, H);
+      x.lineWidth = 2;
+      [120, 210, 300, 390, 480].forEach((r, i) => { x.strokeStyle = `rgba(255,255,255,${0.07 - i * 0.01})`; x.beginPath(); x.arc(W - 120, 230, r, 0, Math.PI * 2); x.stroke(); });
+      for (let i = 0; i < 110; i++) { x.fillStyle = `rgba(255,255,255,${0.1 + rnd() * 0.45})`; x.beginPath(); x.arc(rnd() * W, rnd() * H, 0.6 + rnd() * 1.6, 0, Math.PI * 2); x.fill(); }
+      x.setLineDash([9, 11]); x.lineWidth = 2.5;
+      for (let i = 0; i < 9; i++) {
+        const x1 = rnd() * W, y1 = 80 + rnd() * (H - 160), x2 = rnd() * W, y2 = 80 + rnd() * (H - 160);
+        const gold = i % 3 === 0;
+        x.strokeStyle = gold ? 'rgba(230,198,90,0.18)' : 'rgba(157,189,232,0.12)';
+        x.beginPath(); x.moveTo(x1, y1); x.quadraticCurveTo((x1 + x2) / 2, Math.min(y1, y2) - 120 - rnd() * 160, x2, y2); x.stroke();
+        x.setLineDash([]); x.fillStyle = gold ? 'rgba(230,198,90,0.5)' : 'rgba(157,189,232,0.4)';
+        [[x1, y1], [x2, y2]].forEach(([px, py]) => { x.beginPath(); x.arc(px, py, 5, 0, Math.PI * 2); x.fill(); });
+        x.setLineDash([9, 11]);
+      }
+      x.setLineDash([]);
+
+      // ---- 標題區 ----
+      text('FLIGHT LOG  ·  YEAR IN REVIEW', 80, 112, { w: 700, s: 24, color: GOLD, ls: 6 });
+      const ts = fit(meta.title, 800, 100, 690);
+      text(meta.title, 80, 196, { w: 800, s: ts });
+      const period = st.from ? (st.from === st.to ? st.from : `${st.from}  →  ${st.to}`).replace(/-/g, '.') : '';
+      if (period) text(period, 80, 272, { w: 500, s: 28, color: BLUE, ls: 2 });
+      // 名字與金槓
+      const stripes = Math.max(0, Math.min(4, Number(meta.stripes) || 0));
+      let nx = 80;
+      if (stripes) {
+        for (let i = 0; i < stripes; i++) { x.fillStyle = goldGrad(80 + i * 17, 80 + i * 17 + 9); x.beginPath(); x.roundRect(80 + i * 17, 318, 9, 40, 2); x.fill(); }
+        nx = 80 + stripes * 17 + 14;
+      }
+      text(meta.name || '', nx, 338, { w: 700, s: 38 });
+      if (meta.typeRating) text('Type Rating ' + meta.typeRating, nx, 380, { w: 500, s: 22, color: BLUE });
+      // 大頭貼
+      if (meta.avatar) {
+        const cx = W - 140, cy = 190, r = 78;
+        x.save(); x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.clip();
+        x.drawImage(meta.avatar, cx - r, cy - r, r * 2, r * 2); x.restore();
+        x.strokeStyle = GOLD; x.lineWidth = 5; x.beginPath(); x.arc(cx, cy, r + 8, 0, Math.PI * 2); x.stroke();
+      }
+
+      // ---- 主數據:航班 / 時數 / 距離 ----
+      const hy = 420;
+      panel(80, hy, 920, 270, 36, 0.12);
+      const hero = [['航班', 'FLIGHTS', fmt(st.flights), '班'], ['飛行時數', 'FLIGHT HOURS', formatHoursToHM(st.hours), ''], ['飛行距離', 'DISTANCE', fmt(st.km), 'km']];
+      hero.forEach(([zh, en, val, unit], i) => {
+        const cx = 80 + 920 / 6 + i * (920 / 3);
+        text(en, cx, hy + 52, { w: 700, s: 18, color: GOLD, align: 'center', ls: 4 });
+        text(zh, cx, hy + 86, { w: 600, s: 28, color: BLUE, align: 'center' });
+        const s = fit(val, 800, 84, 270 - (unit ? 48 : 0));
+        font(800, s); const vw = x.measureText(val).width;
+        font(600, 28); const uw = unit ? x.measureText(unit).width + 10 : 0;
+        const startX = cx - (vw + uw) / 2;
+        text(val, startX, hy + 178, { w: 800, s, color: '#fff' });
+        if (unit) text(unit, startX + vw + 10, hy + 192, { w: 600, s: 28, color: BLUE });
+        if (i) { x.strokeStyle = 'rgba(255,255,255,0.14)'; x.lineWidth = 2; x.beginPath(); x.moveTo(80 + i * (920 / 3), hy + 46); x.lineTo(80 + i * (920 / 3), hy + 224); x.stroke(); }
       });
-      x.fillStyle = 'rgba(255,255,255,0.7)'; x.font = `500 36px ${F}`;
-      x.fillText('最常飛的航線', W / 2, 1040); x.fillStyle = '#fff'; x.font = `bold 62px ${F}`; x.fillText(d.topRoute || '—', W / 2, 1110);
-      x.fillStyle = 'rgba(255,255,255,0.7)'; x.font = `500 36px ${F}`; x.fillText(d.busiestLabel, W / 2, 1190);
-      x.fillStyle = 'rgba(255,255,255,0.45)'; x.font = `500 28px ${F}`; x.fillText('FLIGHT LOG', W / 2, 1280);
-      c.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'flight-review.png'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); });
+
+      // ---- 機場 / 旅客 / 貨運 ----
+      const cy0 = 715, cw = (920 - 40) / 3;
+      const cargoT = st.cargo / 1000;
+      const cards = [
+        ['造訪機場', 'AIRPORTS', fmt(st.airports), '座', st.newAirports != null ? `新解鎖 +${st.newAirports}` : ''],
+        ['承運旅客', 'PASSENGERS', fmt(st.pax), '人', ''],
+        ['承運貨物', 'CARGO', cargoT >= 100 ? fmt(cargoT) : cargoT.toFixed(1), '噸', '']
+      ];
+      cards.forEach(([zh, en, val, unit, badge], i) => {
+        const px = 80 + i * (cw + 20);
+        panel(px, cy0, cw, 216, 28);
+        text(en, px + 28, cy0 + 38, { w: 700, s: 17, color: GOLD, ls: 4 });
+        text(zh, px + 28, cy0 + 68, { w: 600, s: 26, color: BLUE });
+        const s = fit(val, 800, 64, cw - 56 - 44);
+        font(800, s); const vw = x.measureText(val).width;
+        text(val, px + 28, cy0 + 126, { w: 800, s });
+        text(unit, px + 28 + vw + 8, cy0 + 134, { w: 600, s: 24, color: BLUE });
+        if (badge) {
+          font(700, 22); const bw = x.measureText(badge).width + 34;
+          x.beginPath(); x.roundRect(px + 28, cy0 + 160, bw, 36, 18); x.fillStyle = goldGrad(px, px + bw + 60); x.fill();
+          text(badge, px + 28 + bw / 2, cy0 + 179, { w: 800, s: 22, color: '#0a1b38', align: 'center' });
+        }
+      });
+
+      // ---- 排行榜共用 ----
+      const MEDAL = ['#E6C65A', '#C8D2E0', '#D9A06B'];
+      const medal = (cx, cy, i) => {
+        x.beginPath(); x.arc(cx, cy, 27, 0, Math.PI * 2); x.fillStyle = MEDAL[i]; x.fill();
+        text(String(i + 1), cx, cy + 1, { w: 800, s: 30, color: '#0a1b38', align: 'center' });
+      };
+      const empty = (msg, px, py) => text(msg, px, py, { w: 500, s: 24, color: BLUE });
+      const country = code => (typeof AIRPORT_COUNTRY !== 'undefined' && AIRPORT_COUNTRY[code]) || '';
+
+      // ---- 最常起飛 / 最常降落 ----
+      const ty = 950, tw = 450;
+      [['最常起飛', 'TOP DEPARTURES', st.topDep, 80], ['最常降落', 'TOP ARRIVALS', st.topArr, 550]].forEach(([zh, en, rows, px]) => {
+        panel(px, ty, tw, 404, 30);
+        text(en, px + 32, ty + 44, { w: 700, s: 17, color: GOLD, ls: 4 });
+        text(zh + ' TOP 3', px + 32, ty + 82, { w: 700, s: 32 });
+        if (!rows.length) return empty('尚無資料', px + 32, ty + 190);
+        rows.forEach(([code, n], i) => {
+          const ry = ty + 168 + i * 84;
+          if (i) { x.strokeStyle = 'rgba(255,255,255,0.10)'; x.lineWidth = 2; x.beginPath(); x.moveTo(px + 28, ry - 42); x.lineTo(px + tw - 28, ry - 42); x.stroke(); }
+          medal(px + 58, ry, i);
+          text(code, px + 108, ry - 8, { w: 800, s: 48 });
+          const co = country(code); if (co) text(co, px + 108, ry + 28, { w: 500, s: 20, color: BLUE });
+          text('×' + n, px + tw - 34, ry, { w: 800, s: 40, color: GOLD, align: 'right' });
+        });
+      });
+
+      // ---- 落地最軟 TOP 3 ----
+      const sy = 1382, sh = 400;
+      panel(80, sy, 920, sh, 30);
+      text('SOFTEST LANDINGS', 112, sy + 44, { w: 700, s: 17, color: GOLD, ls: 4 });
+      text('最輕柔降落 TOP 3', 112, sy + 82, { w: 700, s: 32 });
+      if (!st.softest.length) empty('尚無降落數據(新增紀錄時填寫 Landing V/S 就會出現在這裡)', 112, sy + 200);
+      st.softest.forEach((r, i) => {
+        const ry = sy + 166 + i * 88;
+        if (i) { x.strokeStyle = 'rgba(255,255,255,0.10)'; x.lineWidth = 2; x.beginPath(); x.moveTo(108, ry - 44); x.lineTo(972, ry - 44); x.stroke(); }
+        medal(140, ry, i);
+        text(r.code, 190, ry - 9, { w: 800, s: 48 });
+        text(`${r.from} → ${r.code}  ·  ${r.date.replace(/-/g, '.')}`, 190, ry + 27, { w: 500, s: 21, color: BLUE });
+        font(800, 56); const vw = x.measureText(String(r.vs)).width;
+        text(' fpm', 968, ry + 4, { w: 600, s: 26, color: BLUE, align: 'right' });
+        font(600, 26); const uw = x.measureText(' fpm').width;
+        text(String(r.vs), 968 - uw, ry - 2, { w: 800, s: 56, color: GOLD, align: 'right' });
+      });
+
+      // ---- 頁尾 ----
+      x.fillStyle = goldGrad(80, 160); [0, 1, 2, 3].forEach(i => { x.beginPath(); x.roundRect(80 + i * 14, 1822, 7, 30, 2); x.fill(); });
+      text('FLIGHT LOG', 150, 1838, { w: 800, s: 26, color: '#fff', ls: 6 });
+      const now = new Date();
+      text(`Generated ${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`, 1000, 1838, { w: 500, s: 22, color: BLUE, align: 'right' });
+      return c;
+    }
+
+    async function downloadReviewCard() {
+      if (!statsSnap) return;
+      try { await Promise.all([document.fonts.load('800 40px "DM Sans"'), document.fonts.load('600 24px "DM Sans"'), document.fonts.load('500 20px "DM Sans"')]); } catch (e) {}
+      const st = await buildReviewStats();
+      const avatar = currentAvatar ? await new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = currentAvatar; }) : null;
+      const pr = profileData || {};
+      const c = drawReviewCard(st, { title: statsSnap.title, name: statsSnap.name, stripes: pr.stripes, typeRating: pr.typeRating, avatar, seed: (statsSnap.prefix || 'all').length * 97 + (Number((statsSnap.prefix || '0').slice(0, 4)) || 1) });
+      c.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `flight-review${statsSnap.prefix ? '-' + statsSnap.prefix : ''}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); });
     }
 
     // ===== 列印版飛行履歷(另開視窗,可列印或存成 PDF) =====
@@ -2865,7 +3049,7 @@
       const bestKey = bKeys.reduce((m, k) => (buckets[k] > (buckets[m] || 0) ? k : m), bKeys[0]);
       const pr = profileData || {};
       statsSnap = {
-        list, name: [pr.title, pr.name].filter(Boolean).join(' '),
+        list, prefix, mode, name: [pr.title, pr.name].filter(Boolean).join(' '),
         title: mode === 'year' ? '飛行總回顧' : (mode === 'month' ? `${statsYear} 飛行回顧` : `${statsYear} 年 ${Number(statsMonth)} 月回顧`),
         hours: formatHoursToHM(totalHours), count: list.length, airports: airports.length, countries: countries.size,
         topRoute: topRoutes[0] ? topRoutes[0][0] : '',
