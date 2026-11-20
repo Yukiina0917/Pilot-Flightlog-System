@@ -1,9 +1,8 @@
 {
-  "redirects": [
+  "rewrites": [
     {
-      "source": "/",
-      "destination": "https://flightlog-login-test.a0931966500.workers.dev/",
-      "permanent": false
+      "source": "/:path*",
+      "destination": "https://flightlog-login-test.a0931966500.workers.dev/:path*"
     }
   ]
 }
