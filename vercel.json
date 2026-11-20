@@ -1,8 +1,8 @@
 {
-  "rewrites": [
+  "routes": [
     {
-      "source": "/:path*",
-      "destination": "https://flightlog-login-test.a0931966500.workers.dev/:path*"
+      "src": "/(.*)",
+      "dest": "https://flightlog-login-test.a0931966500.workers.dev/$1"
     }
   ]
 }
