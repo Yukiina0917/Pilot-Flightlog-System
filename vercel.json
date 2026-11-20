@@ -1,0 +1,9 @@
+{
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "https://flightlog-login-test.a0931966500.workers.dev/",
+      "permanent": false
+    }
+  ]
+}
